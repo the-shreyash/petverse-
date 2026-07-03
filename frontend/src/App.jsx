@@ -1,16 +1,13 @@
-import Container from "./componenets/container/Container";
-import Button from "./componenets/Button/index.js";
-import Navbar from "./componenets/Navbar/Navbar.jsx";
+import Navbar from "./components/layout/Navbar";
+import Hero from "./sections/Hero";
+
 function App() {
   return (
-    <Container>
-      <Navbar/>
-      <main className="min-h-screen bg-slate-50 pt-24">
-        {/*hero section*/}
-      </main>
-      
-    </Container>
-    
+    <>
+      <Navbar />
+
+      <Hero />
+    </>
   );
 }
 

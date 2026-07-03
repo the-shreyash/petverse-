@@ -1,4 +1,4 @@
-import logo from "./logo.png";
+import logo from "../../../assets/logos/logo.png";
 import { motion } from "framer-motion";
 
 const NavLogo = () => {
