@@ -26,3 +26,4 @@ Frontend: React.js
 Backend: FastAPI (Python)
 Database: MySQL
 AI: Gemini API
+
