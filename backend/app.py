@@ -95,7 +95,50 @@ def view_pets(user_id):
     return {
         "pets": pets
     }
+# ✅ UPDATE PET API
+@app.route("/update_pet/<int:pet_id>", methods=["PUT"])
+def update_pet(pet_id):
+    data = request.get_json()
 
+    pet_name = data["pet_name"]
+    pet_type = data["pet_type"]
+    breed = data["breed"]
+    gender = data["gender"]
+    dob = data["dob"]
+    weight = data["weight"]
+    color = data["color"]
+    photo = data["photo"]
+
+    cursor = db.cursor()
+
+    query = """
+    UPDATE pets
+    SET pet_name = %s,
+        pet_type = %s,
+        breed = %s,
+        gender = %s,
+        dob = %s,
+        weight = %s,
+        color = %s,
+        photo = %s
+    WHERE pet_id = %s
+    """
+
+    cursor.execute(query, (
+        pet_name,
+        pet_type,
+        breed,
+        gender,
+        dob,
+        weight,
+        color,
+        photo,
+        pet_id
+    ))
+
+    db.commit()
+
+    return {"message": "Pet updated successfully"}
 
 if __name__ == "__main__":
     app.run(debug=True)
