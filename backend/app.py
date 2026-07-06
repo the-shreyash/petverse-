@@ -46,7 +46,7 @@ def login():
     if user is None:
         return {"message": "User not found"}, 404
 
-    db_password = user[3]
+    db_password = user[4]
 
     if password == db_password:
         return {"message": "Login successful", "user_id": user[0]}
@@ -80,6 +80,21 @@ def add_pet():
     db.commit()
 
     return {"message": "Pet added successfully"}
+# ✅ View All Pets of a User
+@app.route("/view_pets/<int:user_id>", methods=["GET"])
+def view_pets(user_id):
+
+    cursor = db.cursor(dictionary=True)
+
+    query = "SELECT * FROM pets WHERE user_id = %s"
+
+    cursor.execute(query, (user_id,))
+
+    pets = cursor.fetchall()
+
+    return {
+        "pets": pets
+    }
 
 
 if __name__ == "__main__":
