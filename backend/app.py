@@ -152,6 +152,37 @@ def delete_pet(pet_id):
     db.commit()
 
     return {"message": "Pet deleted successfully"}
+# ✅ BOOK APPOINTMENT API
+@app.route("/book_appointment", methods=["POST"])
+def book_appointment():
+
+    data = request.get_json()
+
+    user_id = data["user_id"]
+    pet_id = data["pet_id"]
+    appointment_date = data["appointment_date"]
+    appointment_time = data["appointment_time"]
+    reason = data["reason"]
+
+    cursor = db.cursor()
+
+    query = """
+    INSERT INTO appointments
+    (user_id, pet_id, appointment_date, appointment_time, reason)
+    VALUES (%s, %s, %s, %s, %s)
+    """
+
+    cursor.execute(query, (
+        user_id,
+        pet_id,
+        appointment_date,
+        appointment_time,
+        reason
+    ))
+
+    db.commit()
+
+    return {"message": "Appointment Booked Successfully"}
 
 if __name__ == "__main__":
     app.run(debug=True)
