@@ -183,7 +183,46 @@ def book_appointment():
     db.commit()
 
     return {"message": "Appointment Booked Successfully"}
+# ✅ VIEW APPOINTMENTS API
+@app.route("/view_appointments/<int:user_id>", methods=["GET"])
+def view_appointments(user_id):
+
+    cursor = db.cursor(dictionary=True)
+
+    query = """
+    SELECT * FROM appointments
+    WHERE user_id = %s
+    """
+
+    cursor.execute(query, (user_id,))
+
+    appointments = cursor.fetchall()
+
+    # Convert date & time to string
+    for appointment in appointments:
+        appointment["appointment_date"] = str(appointment["appointment_date"])
+        appointment["appointment_time"] = str(appointment["appointment_time"])
+
+    return {
+        "appointments": appointments
+    }
+
+
+# ✅ CANCEL APPOINTMENT API
+@app.route("/cancel_appointment/<int:appointment_id>", methods=["DELETE"])
+def cancel_appointment(appointment_id):
+
+    cursor = db.cursor()
+
+    query = "DELETE FROM appointments WHERE appointment_id = %s"
+
+    cursor.execute(query, (appointment_id,))
+
+    db.commit()
+
+    return {"message": "Appointment Cancelled Successfully"}
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+    
