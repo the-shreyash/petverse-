@@ -5,7 +5,7 @@ import {
   Paragraph,
 } from "../../components/ui/Typography";
 
-import FeatureGrid from "./FeaturesGrid";
+ import FeatureGrid from "./FeaturesGrid";
 
 const Features = () => {
   return (

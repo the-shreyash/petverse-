@@ -7,6 +7,7 @@ import AuthButton from "@/components/auth/AuthButton";
 import AuthDivider from "@/components/auth/AuthDivider";
 import SocialLoginButton from "@/components/auth/SocialLoginButton";
 import RememberMe from "@/components/auth/RememberMe";
+import { authTheme } from "@/styles/authTheme";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -54,11 +55,11 @@ const RegisterForm = () => {
   const termsLabel = (
     <span className="text-xs text-slate-500 font-normal">
       I agree to the{" "}
-      <Link to="/terms" className="font-semibold text-cyan-600 hover:text-cyan-700">
+      <Link to="/terms" className="font-semibold text-emerald-600 hover:text-teal-600">
         Terms of Service
       </Link>{" "}
       and{" "}
-      <Link to="/privacy" className="font-semibold text-cyan-600 hover:text-cyan-700">
+      <Link to="/privacy" className="font-semibold text-emerald-600 hover:text-teal-600">
         Privacy Policy
       </Link>
     </span>
@@ -140,7 +141,7 @@ const RegisterForm = () => {
         Already have an account?{" "}
         <Link
           to="/auth/login"
-          className="font-bold text-cyan-600 hover:text-cyan-700 transition-colors"
+          className={authTheme.link}
         >
           Sign In
         </Link>

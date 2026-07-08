@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { authTheme } from "@/styles/authTheme";
 
 const AuthInput = forwardRef(
   (
@@ -22,11 +23,11 @@ const AuthInput = forwardRef(
           </label>
         )}
 
-        <div className="relative">
+        <div className="group relative">
           {Icon && (
             <Icon
               size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-500"
             />
           )}
 
@@ -36,14 +37,13 @@ const AuthInput = forwardRef(
             placeholder={placeholder}
             className={`
               w-full
-              rounded-2xl
+              rounded-xl
               border
               ${
                 error
                   ? "border-red-400 focus:ring-red-100 focus:border-red-500"
-                  : "border-slate-200 focus:border-cyan-500 focus:ring-cyan-100"
+                  : authTheme.input
               }
-              bg-white
               py-3
               ${Icon ? "pl-12" : "pl-4"}
               ${suffix ? "pr-12" : "pr-4"}

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useAuthHover } from "@/contexts/AuthHoverContext";
+import { useAuthHover } from "@/hooks/useAuthHover";
 
 const SocialLoginButton = ({ provider = "google", onClick, children, ...props }) => {
   const { setIsHoveringButton } = useAuthHover();
@@ -16,7 +16,7 @@ const SocialLoginButton = ({ provider = "google", onClick, children, ...props })
   return (
     <motion.button
       type="button"
-      whileHover={{ y: -1, backgroundColor: "rgba(248, 250, 252, 0.8)", borderColor: "#22d3ee" }}
+      whileHover={{ y: -1, backgroundColor: "rgba(248, 250, 252, 0.8)", borderColor: "#10b981" }}
       whileTap={{ y: 0, scale: 0.99 }}
       onMouseEnter={() => setIsHoveringButton(true)}
       onMouseLeave={() => setIsHoveringButton(false)}
@@ -27,10 +27,10 @@ const SocialLoginButton = ({ provider = "google", onClick, children, ...props })
         items-center
         justify-center
         gap-3
-        rounded-2xl
+        rounded-xl
         border
-        border-slate-200/80
-        bg-white/80
+        border-gray-200
+        bg-white
         py-3
         text-sm
         font-semibold
@@ -40,7 +40,7 @@ const SocialLoginButton = ({ provider = "google", onClick, children, ...props })
         duration-200
         focus:outline-none
         focus:ring-2
-        focus:ring-cyan-500/20
+        focus:ring-emerald-500/20
         cursor-pointer
       "
       {...props}

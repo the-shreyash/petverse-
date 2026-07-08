@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthButton from "@/components/auth/AuthButton";
+import { authTheme } from "@/styles/authTheme";
 
 const VerifyOTPForm = () => {
   const navigate = useNavigate();
@@ -113,11 +114,11 @@ const VerifyOTPForm = () => {
               text-slate-800
               border
               border-slate-200
-              rounded-2xl
+              rounded-xl
               bg-white
-              focus:border-cyan-500
+              focus:border-emerald-500
               focus:ring-4
-              focus:ring-cyan-100
+              focus:ring-emerald-100
               outline-none
               transition-all
               duration-200
@@ -137,7 +138,7 @@ const VerifyOTPForm = () => {
           <button
             type="button"
             onClick={handleResend}
-            className="font-bold text-cyan-600 hover:text-cyan-700 transition-colors cursor-pointer"
+            className={`cursor-pointer ${authTheme.link}`}
           >
             Resend Code
           </button>

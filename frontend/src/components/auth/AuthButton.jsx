@@ -1,26 +1,23 @@
-import { motion } from "framer-motion";
-import { useAuthHover } from "@/contexts/AuthHoverContext";
+import { useAuthHover } from "@/hooks/useAuthHover";
+import Button from "@/components/ui/Button";
 
-const AuthButton = ({ children, isLoading, className = "", ...props }) => {
+const AuthButton = ({
+  children,
+  isLoading,
+  className = "",
+  disabled,
+  ...props
+}) => {
   const { setIsHoveringButton } = useAuthHover();
 
   return (
-    <motion.button
-      whileHover={{ y: -1, shadow: "0 10px 20px -10px rgba(6, 182, 212, 0.4)" }}
-      whileTap={{ y: 0, scale: 0.98 }}
+    <Button
       onMouseEnter={() => setIsHoveringButton(true)}
       onMouseLeave={() => setIsHoveringButton(false)}
+      disabled={disabled || isLoading}
       className={`
         w-full
-        rounded-2xl
-        bg-gradient-to-r
-        from-cyan-500
-        to-blue-600
-        py-3.5
-        font-semibold
-        text-white
-        transition-all
-        duration-200
+        rounded-xl
         disabled:opacity-50
         disabled:pointer-events-none
         flex items-center justify-center gap-2
@@ -34,7 +31,7 @@ const AuthButton = ({ children, isLoading, className = "", ...props }) => {
       ) : (
         children
       )}
-    </motion.button>
+    </Button>
   );
 };
 
