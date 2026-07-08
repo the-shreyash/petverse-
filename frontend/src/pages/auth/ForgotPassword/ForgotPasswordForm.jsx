@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import AuthButton from "@/components/auth/AuthButton";
+import { authTheme } from "@/styles/authTheme";
 
 const ForgotPasswordForm = () => {
   const [email, setEmail] = useState("");
@@ -29,7 +30,7 @@ const ForgotPasswordForm = () => {
     return (
       <div className="space-y-6 text-center py-2">
         <div className="flex justify-center">
-          <div className="rounded-full bg-emerald-50 p-3 text-emerald-500 border border-emerald-100/60 animate-bounce">
+          <div className={`${authTheme.successIcon} animate-bounce`}>
             <CheckCircle2 size={36} />
           </div>
         </div>
@@ -43,7 +44,7 @@ const ForgotPasswordForm = () => {
         <div className="pt-2">
           <Link
             to="/auth/login"
-            className="inline-flex items-center gap-2 text-sm font-bold text-cyan-600 hover:text-cyan-700 transition-colors cursor-pointer"
+            className={`inline-flex cursor-pointer items-center gap-2 text-sm ${authTheme.link}`}
           >
             <ArrowLeft size={16} />
             Back to Sign In
@@ -82,7 +83,7 @@ const ForgotPasswordForm = () => {
       <div className="text-center pt-2">
         <Link
           to="/auth/login"
-          className="inline-flex items-center gap-2 text-sm font-bold text-cyan-600 hover:text-cyan-700 transition-colors cursor-pointer"
+          className={`inline-flex cursor-pointer items-center gap-2 text-sm ${authTheme.link}`}
         >
           <ArrowLeft size={16} />
           Back to Sign In

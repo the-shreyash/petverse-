@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { PawPrint } from "lucide-react";
 import { motion } from "framer-motion";
+import NavLogo from "@/components/layout/Navbar/NavLogo";
+import { authTheme } from "@/styles/authTheme";
 
 const AuthContent = ({
   title,
@@ -14,21 +15,9 @@ const AuthContent = ({
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 }}
-        className="mb-10 flex items-center gap-3"
+        className="mb-10"
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-300/40">
-          <PawPrint size={24} />
-        </div>
-
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            PetVerse
-          </h1>
-
-          <p className="text-sm text-slate-500">
-            One Platform. Complete Pet Care.
-          </p>
-        </div>
+        <NavLogo />
       </motion.div>
 
       {/* Card */}
@@ -46,24 +35,15 @@ const AuthContent = ({
         transition={{
           duration: 0.55,
         }}
-        className="
-          rounded-3xl
-          border
-          border-white/40
-          bg-white/70
-          p-8
-          shadow-2xl
-          shadow-slate-200/50
-          backdrop-blur-xl
-        "
+        className={authTheme.card}
       >
         {/* Heading */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">
             {title}
           </h2>
 
-          <p className="mt-2 text-slate-500">
+          <p className="mt-2 leading-7 text-gray-600">
             {subtitle}
           </p>
         </div>
@@ -86,14 +66,14 @@ const AuthContent = ({
         By continuing you agree to our{" "}
         <Link
           to="/terms"
-          className="font-medium text-cyan-600 hover:text-cyan-700"
+          className="font-medium text-emerald-600 hover:text-teal-600"
         >
           Terms
         </Link>{" "}
         and{" "}
         <Link
           to="/privacy"
-          className="font-medium text-cyan-600 hover:text-cyan-700"
+          className="font-medium text-emerald-600 hover:text-teal-600"
         >
           Privacy Policy
         </Link>

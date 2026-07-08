@@ -1,3 +1,5 @@
+import { authTheme } from "@/styles/authTheme";
+
 const RememberMe = ({ checked, onChange, label = "Remember me", ...props }) => {
   return (
     <label className="flex items-center gap-2.5 cursor-pointer group select-none">
@@ -17,9 +19,9 @@ const RememberMe = ({ checked, onChange, label = "Remember me", ...props }) => {
           bg-white
           flex items-center justify-center
           transition-all duration-200
-          peer-focus:ring-2 peer-focus:ring-cyan-100
-          peer-checked:bg-cyan-500 peer-checked:border-cyan-500
-          group-hover:border-cyan-400
+          ${authTheme.checkbox.focus}
+          ${authTheme.checkbox.checked}
+          ${authTheme.checkbox.hover}
         `}>
           <svg
             className={`h-3.5 w-3.5 text-white transition-transform duration-200 ${

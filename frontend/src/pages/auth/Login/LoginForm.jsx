@@ -7,6 +7,7 @@ import AuthButton from "@/components/auth/AuthButton";
 import AuthDivider from "@/components/auth/AuthDivider";
 import SocialLoginButton from "@/components/auth/SocialLoginButton";
 import RememberMe from "@/components/auth/RememberMe";
+import { authTheme } from "@/styles/authTheme";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -67,7 +68,7 @@ const LoginForm = () => {
         <div className="flex justify-end">
           <Link
             to="/auth/forgot-password"
-            className="text-xs font-bold text-cyan-600 hover:text-cyan-700 transition-colors"
+            className={`text-xs ${authTheme.link}`}
           >
             Forgot Password?
           </Link>
@@ -96,7 +97,7 @@ const LoginForm = () => {
         Don't have an account?{" "}
         <Link
           to="/auth/register"
-          className="font-bold text-cyan-600 hover:text-cyan-700 transition-colors"
+          className={authTheme.link}
         >
           Create Account
         </Link>

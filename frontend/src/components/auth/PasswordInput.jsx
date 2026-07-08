@@ -9,7 +9,7 @@ const PasswordInput = forwardRef(({ label = "Password", placeholder = "•••
     <button
       type="button"
       onClick={() => setShowPassword(!showPassword)}
-      className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
+      className="flex cursor-pointer items-center justify-center text-slate-400 transition-colors hover:text-emerald-600 focus:outline-none"
       tabIndex={-1}
       aria-label={showPassword ? "Hide password" : "Show password"}
     >

@@ -1,6 +1,5 @@
-import { createContext, useContext, useState } from "react";
-
-const AuthHoverContext = createContext();
+import { useState } from "react";
+import { AuthHoverContext } from "./AuthHoverContextObject";
 
 export const AuthHoverProvider = ({ children }) => {
   const [isHoveringButton, setIsHoveringButton] = useState(false);
@@ -10,12 +9,4 @@ export const AuthHoverProvider = ({ children }) => {
       {children}
     </AuthHoverContext.Provider>
   );
-};
-
-export const useAuthHover = () => {
-  const context = useContext(AuthHoverContext);
-  if (!context) {
-    return { isHoveringButton: false, setIsHoveringButton: () => {} };
-  }
-  return context;
 };
