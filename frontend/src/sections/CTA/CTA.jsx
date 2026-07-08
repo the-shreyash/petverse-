@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import Container from "../../components/ui/Container";
 import Badge from "../../components/ui/Badge";
@@ -45,9 +46,11 @@ const CTA = () => {
 
               {/* Action Buttons */}
               <div className="mt-10 flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
-                <Button className="flex items-center justify-center gap-2 text-sm font-bold shadow-lg" variant="primary">
-                  Get Started Free <ArrowRight size={16} />
-                </Button>
+                <Link to="/register" className="w-full sm:w-auto">
+                  <Button className="flex items-center justify-center gap-2 text-sm font-bold shadow-lg w-full" variant="primary">
+                    Get Started Free <ArrowRight size={16} />
+                  </Button>
+                </Link>
                 <Button className="text-sm font-bold border border-slate-200 bg-white hover:bg-slate-50" variant="secondary">
                   Contact Support
                 </Button>

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -71,11 +72,13 @@ const HeroLeft = () => {
 
       <div className="flex flex-wrap gap-5">
 
-        <Button>
+        <Link to="/register">
+          <Button>
 
-          Get Started
+            Get Started
 
-        </Button>
+          </Button>
+        </Link>
 
         <Button variant="secondary">
 

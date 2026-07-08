@@ -48,7 +48,7 @@ const ResetPasswordForm = () => {
           </p>
         </div>
         <div className="pt-2">
-          <AuthButton onClick={() => navigate("/auth/login")}>
+          <AuthButton onClick={() => navigate("/login")}>
             Proceed to Sign In
           </AuthButton>
         </div>
@@ -92,7 +92,7 @@ const ResetPasswordForm = () => {
       {/* Back to Login */}
       <div className="text-center pt-2">
         <Link
-          to="/auth/login"
+          to="/login"
           className={`inline-flex cursor-pointer items-center gap-2 text-sm ${authTheme.link}`}
         >
           <ArrowLeft size={16} />

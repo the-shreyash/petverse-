@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -10,6 +10,7 @@ import RememberMe from "@/components/auth/RememberMe";
 import { authTheme } from "@/styles/authTheme";
 
 const LoginForm = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -18,21 +19,7 @@ const LoginForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email) {
-      setError("Email is required.");
-      return;
-    }
-    if (!password) {
-      setError("Password is required.");
-      return;
-    }
-    setError("");
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
-      alert("Login simulated for: " + email);
-    }, 1200);
+    navigate("/dashboard");
   };
 
   return (
@@ -67,7 +54,7 @@ const LoginForm = () => {
         />
         <div className="flex justify-end">
           <Link
-            to="/auth/forgot-password"
+            to="/forgot-password"
             className={`text-xs ${authTheme.link}`}
           >
             Forgot Password?
@@ -96,7 +83,7 @@ const LoginForm = () => {
       <p className="text-center text-sm text-slate-500 pt-2">
         Don't have an account?{" "}
         <Link
-          to="/auth/register"
+          to="/register"
           className={authTheme.link}
         >
           Create Account

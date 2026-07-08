@@ -21,35 +21,7 @@ const RegisterForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError("Full name is required.");
-      return;
-    }
-    if (!email) {
-      setError("Email address is required.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (!agreeTerms) {
-      setError("You must agree to the Terms & Privacy Policy.");
-      return;
-    }
-
-    setError("");
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
-      alert("Registration simulated for: " + email);
-      navigate("/auth/verify");
-    }, 1200);
+    navigate("/dashboard");
   };
 
   const termsLabel = (
@@ -140,7 +112,7 @@ const RegisterForm = () => {
       <p className="text-center text-sm text-slate-500 pt-1">
         Already have an account?{" "}
         <Link
-          to="/auth/login"
+          to="/login"
           className={authTheme.link}
         >
           Sign In

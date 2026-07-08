@@ -43,7 +43,7 @@ const ForgotPasswordForm = () => {
         </div>
         <div className="pt-2">
           <Link
-            to="/auth/login"
+            to="/login"
             className={`inline-flex cursor-pointer items-center gap-2 text-sm ${authTheme.link}`}
           >
             <ArrowLeft size={16} />
@@ -82,7 +82,7 @@ const ForgotPasswordForm = () => {
       {/* Back to Login */}
       <div className="text-center pt-2">
         <Link
-          to="/auth/login"
+          to="/login"
           className={`inline-flex cursor-pointer items-center gap-2 text-sm ${authTheme.link}`}
         >
           <ArrowLeft size={16} />
