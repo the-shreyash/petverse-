@@ -198,15 +198,69 @@ def view_appointments(user_id):
 
     appointments = cursor.fetchall()
 
-    # Convert date & time to string
+    # Convert date, time & created_at to string
     for appointment in appointments:
         appointment["appointment_date"] = str(appointment["appointment_date"])
         appointment["appointment_time"] = str(appointment["appointment_time"])
+        appointment["created_at"] = str(appointment["created_at"])
 
     return {
         "appointments": appointments
     }
+# ✅ ADD PRODUCT API
+@app.route("/add_product", methods=["POST"])
+def add_product():
 
+    data = request.get_json()
+
+    product_name = data["product_name"]
+    category = data["category"]
+    price = data["price"]
+    stock = data["stock"]
+    description = data["description"]
+    image = data["image"]
+
+    cursor = db.cursor()
+
+    query = """
+    INSERT INTO products
+    (product_name, category, price, stock, description, image)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """
+
+    cursor.execute((
+        query
+    ), (
+        product_name,
+        category,
+        price,
+        stock,
+        description,
+        image
+    ))
+
+    db.commit()
+
+    return {"message": "Product Added Successfully"}
+# ✅ VIEW PRODUCTS API
+@app.route("/view_products", methods=["GET"])
+def view_products():
+
+    cursor = db.cursor(dictionary=True)
+
+    query = "SELECT * FROM products"
+
+    cursor.execute(query)
+
+    products = cursor.fetchall()
+
+    # Convert created_at to string
+    for product in products:
+        product["created_at"] = str(product["created_at"])
+
+    return {
+        "products": products
+    }
 
 # ✅ CANCEL APPOINTMENT API
 @app.route("/cancel_appointment/<int:appointment_id>", methods=["DELETE"])
