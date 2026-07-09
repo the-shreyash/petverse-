@@ -275,6 +275,35 @@ def cancel_appointment(appointment_id):
     db.commit()
 
     return {"message": "Appointment Cancelled Successfully"}
+# ✅ PLACE ORDER API
+@app.route("/place_order", methods=["POST"])
+def place_order():
+
+    data = request.get_json()
+
+    user_id = data["user_id"]
+    product_id = data["product_id"]
+    quantity = data["quantity"]
+    total_price = data["total_price"]
+
+    cursor = db.cursor()
+
+    query = """
+    INSERT INTO orders
+    (user_id, product_id, quantity, total_price)
+    VALUES (%s, %s, %s, %s)
+    """
+
+    cursor.execute(query, (
+        user_id,
+        product_id,
+        quantity,
+        total_price
+    ))
+
+    db.commit()
+
+    return {"message": "Order Placed Successfully"}
 # ✅ DASHBOARD API
 @app.route("/dashboard/<int:user_id>", methods=["GET"])
 def dashboard(user_id):
@@ -316,6 +345,7 @@ def dashboard(user_id):
         "total_pets": total_pets["total_pets"],
         "total_appointments": total_appointments["total_appointments"]
     }
+    
 
 if __name__ == "__main__":
     app.run(debug=True)
