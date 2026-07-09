@@ -330,6 +330,73 @@ def add_adoption():
     db.commit()
 
     return {"message": "Adoption Request Submitted Successfully"}
+# ✅ ADD TO CART API
+@app.route("/add_to_cart", methods=["POST"])
+def add_to_cart():
+
+    data = request.get_json()
+
+    user_id = data["user_id"]
+    product_id = data["product_id"]
+    quantity = data["quantity"]
+
+    cursor = db.cursor()
+
+    query = """
+    INSERT INTO cart
+    (user_id, product_id, quantity)
+    VALUES (%s, %s, %s)
+    """
+
+    cursor.execute(query, (
+        user_id,
+        product_id,
+        quantity
+    ))
+
+    db.commit()
+
+    return {"message": "Product Added To Cart Successfully"}
+# ✅ VIEW CART API
+@app.route("/view_cart/<int:user_id>", methods=["GET"])
+def view_cart(user_id):
+
+    cursor = db.cursor(dictionary=True)
+
+    query = """
+    SELECT
+        cart.cart_id,
+        products.product_id,
+        products.product_name,
+        products.price,
+        products.image,
+        cart.quantity
+    FROM cart
+    JOIN products
+    ON cart.product_id = products.product_id
+    WHERE cart.user_id = %s
+    """
+
+    cursor.execute(query, (user_id,))
+
+    cart_items = cursor.fetchall()
+
+    return {
+        "cart": cart_items
+    }
+# ✅ REMOVE FROM CART API
+@app.route("/remove_from_cart/<int:cart_id>", methods=["DELETE"])
+def remove_from_cart(cart_id):
+
+    cursor = db.cursor()
+
+    query = "DELETE FROM cart WHERE cart_id = %s"
+
+    cursor.execute(query, (cart_id,))
+
+    db.commit()
+
+    return {"message": "Item Removed From Cart Successfully"}
 # ✅ PLACE ORDER API
 @app.route("/place_order", methods=["POST"])
 def place_order():
