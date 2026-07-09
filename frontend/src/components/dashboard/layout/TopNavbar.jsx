@@ -126,7 +126,7 @@ const TopNavbar = ({
             "
           >
             <img
-              src="https://i.pravatar.cc/100"
+              src=""
               alt="Profile"
               className="h-11 w-11 rounded-xl object-cover"
             />
