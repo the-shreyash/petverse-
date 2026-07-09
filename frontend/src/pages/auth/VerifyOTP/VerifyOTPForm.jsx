@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import AuthButton from "@/components/auth/AuthButton";
 import { authTheme } from "@/styles/authTheme";
 
@@ -149,6 +150,17 @@ const VerifyOTPForm = () => {
       <AuthButton type="submit" isLoading={isLoading}>
         Verify Code
       </AuthButton>
+
+      {/* Back to Login */}
+      <div className="text-center pt-2">
+        <Link
+          to="/login"
+          className={`inline-flex cursor-pointer items-center gap-2 text-sm ${authTheme.link}`}
+        >
+          <ArrowLeft size={16} />
+          Back to Sign In
+        </Link>
+      </div>
     </form>
   );
 };
