@@ -275,6 +275,61 @@ def cancel_appointment(appointment_id):
     db.commit()
 
     return {"message": "Appointment Cancelled Successfully"}
+# ✅ VIEW ORDERS API
+@app.route("/view_orders/<int:user_id>", methods=["GET"])
+def view_orders(user_id):
+
+    cursor = db.cursor(dictionary=True)
+
+    query = """
+    SELECT * FROM orders
+    WHERE user_id = %s
+    """
+
+    cursor.execute(query, (user_id,))
+
+    orders = cursor.fetchall()
+
+    # Convert order_date to string
+    for order in orders:
+        order["order_date"] = str(order["order_date"])
+
+    return {
+        "orders": orders
+    }
+# ✅ ADD ADOPTION REQUEST API
+@app.route("/add_adoption", methods=["POST"])
+def add_adoption():
+
+    data = request.get_json()
+
+    user_id = data["user_id"]
+    pet_name = data["pet_name"]
+    pet_type = data["pet_type"]
+    breed = data["breed"]
+    age = data["age"]
+    reason = data["reason"]
+
+    cursor = db.cursor()
+
+    query = """
+    INSERT INTO adoption
+    (user_id, pet_name, pet_type, breed, age, reason)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """
+
+    cursor.execute(query, (
+        user_id,
+        pet_name,
+        pet_type,
+        breed,
+        age,
+        reason
+    ))
+
+    db.commit()
+
+    return {"message": "Adoption Request Submitted Successfully"}
 # ✅ PLACE ORDER API
 @app.route("/place_order", methods=["POST"])
 def place_order():
@@ -321,31 +376,41 @@ def dashboard(user_id):
     if user is None:
         return {"message": "User not found"}, 404
 
-
     # Total Pets
     cursor.execute(
         "SELECT COUNT(*) AS total_pets FROM pets WHERE user_id=%s",
         (user_id,)
     )
-
     total_pets = cursor.fetchone()
-
 
     # Total Appointments
     cursor.execute(
         "SELECT COUNT(*) AS total_appointments FROM appointments WHERE user_id=%s",
         (user_id,)
     )
-
     total_appointments = cursor.fetchone()
 
+    # Total Orders
+    cursor.execute(
+        "SELECT COUNT(*) AS total_orders FROM orders WHERE user_id=%s",
+        (user_id,)
+    )
+    total_orders = cursor.fetchone()
+
+    # Total Adoption Requests
+    cursor.execute(
+        "SELECT COUNT(*) AS total_adoptions FROM adoption WHERE user_id=%s",
+        (user_id,)
+    )
+    total_adoptions = cursor.fetchone()
 
     return {
         "user": user,
         "total_pets": total_pets["total_pets"],
-        "total_appointments": total_appointments["total_appointments"]
+        "total_appointments": total_appointments["total_appointments"],
+        "total_orders": total_orders["total_orders"],
+        "total_adoptions": total_adoptions["total_adoptions"]
     }
-    
 
 if __name__ == "__main__":
     app.run(debug=True)
