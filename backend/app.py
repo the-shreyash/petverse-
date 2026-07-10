@@ -1,5 +1,6 @@
 from flask import Flask, request
 from config import db
+import bcrypt
 
 app = Flask(__name__)
 
@@ -18,13 +19,21 @@ def signup():
     email = data["email"]
     phone = data["phone"]
     password = data["password"]
+    # Hash password using bcrypt
+hashed_password = bcrypt.hashpw(
+    password.encode("utf-8"),
+    bcrypt.gensalt()
+).decode("utf-8")
 
     query = """
     INSERT INTO users (full_name, email, phone, password)
     VALUES (%s, %s, %s, %s)
     """
 
-    cursor.execute(query, (full_name, email, phone, password))
+    cursor.execute(
+    query,
+    (full_name, email, phone, hashed_password)
+)
     db.commit()
 
     return {"message": "User Registered Successfully"}
