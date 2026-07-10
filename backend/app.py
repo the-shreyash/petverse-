@@ -19,11 +19,12 @@ def signup():
     email = data["email"]
     phone = data["phone"]
     password = data["password"]
+
     # Hash password using bcrypt
-hashed_password = bcrypt.hashpw(
-    password.encode("utf-8"),
-    bcrypt.gensalt()
-).decode("utf-8")
+    hashed_password = bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
 
     query = """
     INSERT INTO users (full_name, email, phone, password)
@@ -31,16 +32,21 @@ hashed_password = bcrypt.hashpw(
     """
 
     cursor.execute(
-    query,
-    (full_name, email, phone, hashed_password)
-)
+        query,
+        (full_name, email, phone, hashed_password)
+    )
+
     db.commit()
+    cursor.close()
 
-    return {"message": "User Registered Successfully"}
+    return {
+        "message": "User Registered Successfully"
+    }
 
-# ✅ LOGIN API (correct place)
+# ✅ LOGIN API
 @app.route("/login", methods=["POST"])
 def login():
+
     data = request.get_json()
 
     email = data["email"]
@@ -49,18 +55,31 @@ def login():
     cursor = db.cursor()
 
     query = "SELECT * FROM users WHERE email = %s"
+
     cursor.execute(query, (email,))
+
     user = cursor.fetchone()
 
     if user is None:
         return {"message": "User not found"}, 404
 
+    # Database me stored hashed password
     db_password = user[4]
 
-    if password == db_password:
-        return {"message": "Login successful", "user_id": user[0]}
+    # Check password using bcrypt
+    if bcrypt.checkpw(
+        password.encode("utf-8"),
+        db_password.encode("utf-8")
+    ):
+        return {
+            "message": "Login successful",
+            "user_id": user[0]
+        }
+
     else:
-        return {"message": "Wrong password"}, 401
+        return {
+            "message": "Wrong password"
+        }, 401
     
 # ✅ add_pet API (OUTSIDE login)
 @app.route("/add_pet", methods=["POST"])
