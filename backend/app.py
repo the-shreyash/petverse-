@@ -1,8 +1,11 @@
 from flask import Flask, request
 from config import db
 import bcrypt
+import jwt
+import datetime
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = "petverse_secret_key_2026"
 
 @app.route("/")
 def home():
@@ -71,9 +74,21 @@ def login():
         password.encode("utf-8"),
         db_password.encode("utf-8")
     ):
+
+        # Generate JWT Token
+        token = jwt.encode(
+            {
+                "user_id": user[0],
+                "email": user[2],
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+            },
+            app.config["SECRET_KEY"],
+            algorithm="HS256"
+        )
+
         return {
             "message": "Login successful",
-            "user_id": user[0]
+            "token": token
         }
 
     else:
@@ -610,5 +625,5 @@ def dashboard(user_id):
     }
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
     
