@@ -6,6 +6,17 @@ import datetime
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "petverse_secret_key_2026"
+def verify_token(token):
+    try:
+        decoded = jwt.decode(
+            token,
+            app.config["SECRET_KEY"],
+            algorithms=["HS256"]
+        )
+        return decoded
+
+    except:
+        return None
 
 @app.route("/")
 def home():
@@ -575,6 +586,16 @@ def place_order():
 @app.route("/dashboard/<int:user_id>", methods=["GET"])
 def dashboard(user_id):
 
+    token = request.headers.get("Authorization")
+
+    if not token:
+        return {"message": "Token Missing"}, 401
+
+    decoded_user = verify_token(token)
+
+    if decoded_user is None:
+        return {"message": "Invalid Token"}, 401
+
     cursor = db.cursor(dictionary=True)
 
     # User Details
@@ -623,7 +644,24 @@ def dashboard(user_id):
         "total_orders": total_orders["total_orders"],
         "total_adoptions": total_adoptions["total_adoptions"]
     }
+# ✅ PROTECTED PROFILE API
+@app.route("/profile", methods=["GET"])
+def profile():
 
+    token = request.headers.get("Authorization")
+
+    if not token:
+        return {"message": "Token Missing"}, 401
+
+    user = verify_token(token)
+
+    if user is None:
+        return {"message": "Invalid Token"}, 401
+
+    return {
+        "message": "Token Verified Successfully",
+        "user": user
+    }
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
     
