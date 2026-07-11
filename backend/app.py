@@ -1,10 +1,13 @@
 from flask import Flask, request
+from flask_cors import CORS
 from config import db
 import bcrypt
 import jwt
 import datetime
 
 app = Flask(__name__)
+CORS(app)
+
 app.config["SECRET_KEY"] = "petverse_secret_key_2026"
 def verify_token(token):
     try:

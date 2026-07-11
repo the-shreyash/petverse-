@@ -19,11 +19,52 @@ const RegisterForm = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/dashboard");
+  
+    setError("");
+  
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+  
+    if (!agreeTerms) {
+      setError("Please accept Terms and Privacy Policy");
+      return;
+    }
+  
+    try {
+      setIsLoading(true);
+  
+      const response = await fetch("http://127.0.0.1:5001/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: name,
+          email: email,
+          phone: "",
+          password: password,
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        alert("Signup Successful!");
+        navigate("/login");
+      } else {
+        setError(data.message || "Signup failed");
+      }
+  
+    } catch (error) {
+      setError("Backend server not connected");
+    } finally {
+      setIsLoading(false);
+    }
   };
-
   const termsLabel = (
     <span className="text-xs text-slate-500 font-normal">
       I agree to the{" "}
