@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Mail } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -16,10 +17,34 @@ const LoginForm = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/dashboard");
+  
+    setIsLoading(true);
+    setError("");
+  
+    try {
+      const response = await axios.post(
+        "http://127.0.0.1:5001/login",
+        {
+          email,
+          password,
+        }
+      );
+  
+      localStorage.setItem("token", response.data.token);
+  
+      navigate("/dashboard");
+  
+    } catch (err) {
+      if (err.response) {
+        setError(err.response.data.message);
+      } else {
+        setError("Server Error");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
