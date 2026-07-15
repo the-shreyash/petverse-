@@ -33,9 +33,7 @@ from app.database.base import Base  # noqa: F401
 
 # ── Import all models so Alembic can detect them ──────────────────────────────
 # Add new model modules here as you create them in Phase B2, B3, etc.
-# Example:
-#   from app.models import user, pet, appointment  # noqa: F401
-import app.models  # noqa: F401 — triggers __init__.py which imports all models
+import app.database.models  # noqa: F401
 
 # ── Load DATABASE_URL from settings ───────────────────────────────────────────
 from app.core.config import get_settings

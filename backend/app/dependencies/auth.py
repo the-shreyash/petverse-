@@ -36,11 +36,11 @@ from app.exceptions.auth import (
     UnverifiedUserException,
 )
 from app.exceptions.http import ForbiddenException
-from app.models.enums import UserRole
-from app.models.user import User
-from app.repositories.user_repository import UserRepository
-from app.services.auth_service import AuthService
-from app.services.token_service import TokenService
+from app.database.enums import UserRole
+from app.modules.user.models.user import User
+from app.modules.user.repositories.user_repository import UserRepository
+from app.modules.auth.services.auth_service import AuthService
+from app.modules.auth.services.token_service import TokenService
 
 # ``auto_error=False`` so WE decide the error shape (our standard envelope)
 # instead of Starlette's default 403 for a missing header.

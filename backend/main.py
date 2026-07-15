@@ -83,6 +83,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure the upload directory tree exists before any avatar upload request.
     Path(settings.UPLOAD_DIRECTORY, "avatars").mkdir(parents=True, exist_ok=True)
 
+    # Register EventBus Handlers (Phase B10)
+    from app.modules.notifications.events.handlers import register_handlers
+    register_handlers()
+
     logger.info("✅ %s is ready to serve requests", settings.APP_NAME)
 
     yield  # ── Application is running ────────────────────────────────────────

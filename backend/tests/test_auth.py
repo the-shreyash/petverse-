@@ -33,7 +33,7 @@ async def captured_emails(monkeypatch):
     """
     store = {"verification": [], "reset": [], "welcome": []}
 
-    from app.services.email_service import EmailService
+    from app.core.email import EmailService
 
     async def _verify(self, *, email, token):
         store["verification"].append((email, token))

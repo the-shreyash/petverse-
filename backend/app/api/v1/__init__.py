@@ -14,10 +14,14 @@ Adding a new Phase B router:
 
 from fastapi import APIRouter
 
-from app.api.v1.routers.auth import router as auth_router
-from app.api.v1.routers.health import router as health_router
-from app.api.v1.routers.pets import router as pets_router
-from app.api.v1.routers.users import router as users_router
+from app.modules.auth.routers.auth import router as auth_router
+from app.api.v1.health import router as health_router
+from app.modules.pet.routers.pets import router as pets_router
+from app.modules.user.routers.users import router as users_router
+from app.modules.health.routers import health_module_router
+from app.modules.dashboard.routers import dashboard_router
+from app.modules.ai.routers.ai import router as ai_router
+from app.modules.shop.routers.shop_router import router as shop_router
 
 # ─── V1 aggregator ────────────────────────────────────────────────────────────
 api_v1_router = APIRouter()
@@ -33,3 +37,27 @@ api_v1_router.include_router(users_router, prefix="/users", tags=["Users"])
 
 # ── Phase B4 (Pet Management) ───────────────────────────────────────────────────
 api_v1_router.include_router(pets_router, prefix="/pets", tags=["Pets"])
+
+# ── Phase B5 (Health Domain) ───────────────────────────────────────────────────
+api_v1_router.include_router(health_module_router, prefix="/pets/{pet_id}/health")
+
+# ── Phase B6 (Dashboard Aggregation) ───────────────────────────────────────────
+api_v1_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
+
+# ── Phase B7 (AI Engine) ───────────────────────────────────────────────────────
+api_v1_router.include_router(ai_router, prefix="/ai", tags=["AI"])
+
+# ── Phase B8 (Commerce Engine) ─────────────────────────────────────────────────
+api_v1_router.include_router(shop_router, prefix="/shop", tags=["Shop"])
+
+# ── Phase B9 (Community Domain) ────────────────────────────────────────────────
+from app.modules.community.routers import community_router, adoption_router, lost_pet_router
+api_v1_router.include_router(community_router)
+api_v1_router.include_router(adoption_router)
+api_v1_router.include_router(lost_pet_router)
+
+# ── Phase B10 (Notification & Automation Engine) ───────────────────────────────
+from app.modules.notifications.routers import notif_router, pref_router, rem_router
+api_v1_router.include_router(notif_router)
+api_v1_router.include_router(pref_router)
+api_v1_router.include_router(rem_router)

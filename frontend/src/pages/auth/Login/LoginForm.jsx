@@ -25,20 +25,27 @@ const LoginForm = () => {
   
     try {
       const response = await axios.post(
-        "http://127.0.0.1:5001/login",
+        "http://127.0.0.1:8000/api/v1/auth/login",
         {
           email,
           password,
         }
       );
   
-      localStorage.setItem("token", response.data.token);
+      // The new FastAPI backend returns tokens inside a "tokens" object
+      const token = response.data.tokens ? response.data.tokens.access_token : response.data.token;
+      localStorage.setItem("token", token);
   
       navigate("/dashboard");
   
     } catch (err) {
       if (err.response) {
-        setError(err.response.data.message);
+        const data = err.response.data;
+        if (data.details && data.details.length > 0) {
+          setError(data.details.map(d => `${d.field.split(' → ').pop()}: ${d.message}`).join(" | "));
+        } else {
+          setError(data.message || "Login failed");
+        }
       } else {
         setError("Server Error");
       }

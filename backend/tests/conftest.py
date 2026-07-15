@@ -28,8 +28,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-# Importing app.models registers every table on Base.metadata.
-import app.models  # noqa: F401
+# Importing app.database.models registers every table on Base.metadata.
+import app.database.models  # noqa: F401
 from app.database.base import Base
 from app.dependencies.common import get_db as common_get_db
 from main import app

@@ -15,11 +15,11 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.common import get_db
-from app.services.avatar_service import AvatarService
-from app.services.preference_service import PreferenceService
-from app.services.privacy_service import PrivacyService
-from app.services.profile_service import ProfileService
-from app.services.user_service import UserService
+from app.modules.user.services.avatar_service import AvatarService
+from app.modules.user.services.preference_service import PreferenceService
+from app.modules.user.services.privacy_service import PrivacyService
+from app.modules.user.services.profile_service import ProfileService
+from app.modules.user.services.user_service import UserService
 
 
 def get_profile_service(db: AsyncSession = Depends(get_db)) -> ProfileService:

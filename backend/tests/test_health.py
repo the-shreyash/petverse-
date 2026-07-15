@@ -37,7 +37,7 @@ def client():
     with patch("main.init_db", new_callable=AsyncMock) as mock_init, \
          patch("main.close_db", new_callable=AsyncMock) as mock_close, \
          patch(
-             "app.api.v1.routers.health.check_db_health",
+             "app.api.v1.health.check_db_health",
              new_callable=AsyncMock,
              return_value={"status": "healthy"},
          ):
