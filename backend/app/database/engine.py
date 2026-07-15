@@ -143,6 +143,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Get the session factory for background tasks and events."""
+    if _session_factory is None:
+        raise RuntimeError("Database not initialised. Call init_db() during application startup.")
+    return _session_factory
+
+
 async def check_db_health() -> dict:
     """
     Execute a lightweight query to verify database is reachable.

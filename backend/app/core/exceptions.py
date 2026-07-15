@@ -30,6 +30,30 @@ from app.core.logging import get_logger, request_id_ctx
 logger = get_logger(__name__)
 
 
+# ─── Custom Exceptions ────────────────────────────────────────────────────────
+
+class PetVerseException(Exception):
+    """Base exception for custom domain errors."""
+    def __init__(self, message: str, error_code: str = "DomainError"):
+        super().__init__(message)
+        self.message = message
+        self.error_code = error_code
+
+class NotFoundException(PetVerseException):
+    """Raised when a requested resource is not found."""
+    def __init__(self, message: str = "Resource not found", error_code: str = "NotFound"):
+        super().__init__(message, error_code=error_code)
+
+class ForbiddenException(PetVerseException):
+    """Raised when the user does not have permission."""
+    def __init__(self, message: str = "Permission denied", error_code: str = "Forbidden"):
+        super().__init__(message, error_code=error_code)
+
+class ConflictException(PetVerseException):
+    """Raised when a request conflicts with the current state of the server."""
+    def __init__(self, message: str = "Resource conflict", error_code: str = "Conflict"):
+        super().__init__(message, error_code=error_code)
+
 # ─── Response Builder ─────────────────────────────────────────────────────────
 
 def _error_response(
@@ -148,9 +172,34 @@ async def unhandled_exception_handler(
     )
 
 
+async def petverse_exception_handler(
+    request: Request, exc: PetVerseException
+) -> JSONResponse:
+    """Handle custom PetVerse business logic exceptions."""
+    logger.warning(
+        "PetVerseException | path=%s | error=%s | message=%s",
+        request.url.path,
+        exc.error_code,
+        exc.message,
+    )
+    # Map exception types to HTTP status codes
+    status_code = status.HTTP_400_BAD_REQUEST
+    if isinstance(exc, NotFoundException):
+        status_code = status.HTTP_404_NOT_FOUND
+    elif isinstance(exc, ForbiddenException):
+        status_code = status.HTTP_403_FORBIDDEN
+        
+    return _error_response(
+        status_code=status_code,
+        error=exc.error_code,
+        message=exc.message,
+    )
+
+
 def register_exception_handlers(app: Any) -> None:
     """Register all exception handlers on the FastAPI app instance."""
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(SQLAlchemyError, database_exception_handler)
+    app.add_exception_handler(PetVerseException, petverse_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
