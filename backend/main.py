@@ -26,11 +26,13 @@ Running in production:
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.v1 import api_v1_router
@@ -77,6 +79,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         database_url=settings.DATABASE_URL,
         environment=settings.ENVIRONMENT,
     )
+
+    # Ensure the upload directory tree exists before any avatar upload request.
+    Path(settings.UPLOAD_DIRECTORY, "avatars").mkdir(parents=True, exist_ok=True)
 
     logger.info("✅ %s is ready to serve requests", settings.APP_NAME)
 
@@ -192,6 +197,16 @@ def create_application() -> FastAPI:
     application.include_router(
         api_v1_router,
         prefix=settings.API_PREFIX,
+    )
+
+    # ─── Uploaded files (avatars, etc.) ───────────────────────────────────────
+    # Served directly by this process for now; swap for a CDN/object-storage
+    # URL in production without changing any code that stores the URL.
+    Path(settings.UPLOAD_DIRECTORY).mkdir(parents=True, exist_ok=True)
+    application.mount(
+        "/uploads",
+        StaticFiles(directory=settings.UPLOAD_DIRECTORY),
+        name="uploads",
     )
 
     # ─── Root endpoint ────────────────────────────────────────────────────────

@@ -54,3 +54,78 @@ class VerificationTokenType(str, Enum):
 
     EMAIL_VERIFICATION = "EMAIL_VERIFICATION"
     PASSWORD_RESET = "PASSWORD_RESET"
+
+
+class Gender(str, Enum):
+    """Self-identified gender, shown on the profile. Optional everywhere."""
+
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    OTHER = "OTHER"
+    PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY"
+
+
+class ThemePreference(str, Enum):
+    """UI theme preference (Phase B3 — Account Preferences)."""
+
+    LIGHT = "LIGHT"
+    DARK = "DARK"
+    SYSTEM = "SYSTEM"
+
+
+class ProfileVisibility(str, Enum):
+    """Who can view a user's profile (Phase B3 — Privacy Settings)."""
+
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+
+
+class PetSpecies(str, Enum):
+    """
+    Species of a pet (Phase B4 — Pet Management).
+
+    Kept as a closed enum rather than free text so every future module
+    (Health, AI, Shop) can branch on species without fuzzy string matching.
+    ``OTHER`` covers anything not yet modelled explicitly.
+    """
+
+    DOG = "DOG"
+    CAT = "CAT"
+    BIRD = "BIRD"
+    RABBIT = "RABBIT"
+    FISH = "FISH"
+    REPTILE = "REPTILE"
+    RODENT = "RODENT"
+    HORSE = "HORSE"
+    OTHER = "OTHER"
+
+
+class PetGender(str, Enum):
+    """
+    Biological sex of a pet.
+
+    A separate enum from ``Gender`` (used for human users) — pets don't have
+    a self-identified gender or a "prefer not to say" option, and conflating
+    the two enums would let an unrelated future change to human ``Gender``
+    accidentally ripple into the Pet domain.
+    """
+
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    UNKNOWN = "UNKNOWN"
+
+
+class PetStatus(str, Enum):
+    """
+    Real-world life/adoption status of a pet.
+
+    Distinct from ``Pet.is_active`` (a simple visibility toggle the owner can
+    flip at will): ``status`` reflects a fact about the pet itself that other
+    modules make decisions on — e.g. Health should stop sending vaccination
+    reminders for a ``DECEASED`` pet regardless of ``is_active``.
+    """
+
+    ACTIVE = "ACTIVE"
+    LOST = "LOST"
+    DECEASED = "DECEASED"
+    GIVEN_UP = "GIVEN_UP"

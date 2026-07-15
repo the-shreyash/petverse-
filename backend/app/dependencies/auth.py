@@ -77,7 +77,7 @@ async def get_current_user(
     payload = token_service.decode_access_token(credentials.credentials)
 
     user = await UserRepository(db).get_by_id(payload["sub"])
-    if user is None:
+    if user is None or user.is_deleted:
         raise InvalidTokenException("Account no longer exists.")
     if not user.is_active:
         raise InactiveUserException()
@@ -155,6 +155,6 @@ async def get_optional_user(
         )
     except Exception:
         return None
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.is_deleted:
         return None
     return user

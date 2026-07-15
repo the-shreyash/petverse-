@@ -18,14 +18,14 @@ Security notes:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Enum, String
+from sqlalchemy import Boolean, Date, DateTime, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
-from app.models.enums import AuthProvider, UserRole
+from app.models.enums import AuthProvider, Gender, UserRole
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -55,7 +55,23 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # ─── Profile ──────────────────────────────────────────────────────────────
+    # (Phase B3 — Account Management). Kept on the ``users`` row rather than a
+    # separate profile table: they are 1:1, always fetched together with the
+    # rest of the identity, and a second table would just duplicate the same
+    # user for no query-planning benefit.
     profile_image: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    gender: Mapped[Optional[Gender]] = mapped_column(
+        Enum(Gender, native_enum=False, length=32), nullable=True
+    )
+    country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    # Display/formatting locale — distinct from UserPreference, which holds
+    # notification/theme toggles. Kept here since every module that renders a
+    # date or a name for this user needs it, not just the preferences screen.
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
+    language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
 
     # ─── Status flags ─────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(
@@ -65,6 +81,16 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_verified: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False,
         doc="True once the user has confirmed their email address.",
+    )
+
+    # ─── Soft delete (Phase B3) ───────────────────────────────────────────────
+    # We never hard-delete a user — every other module keys off ``user_id``,
+    # and future GDPR/export tooling needs the row to still exist. Deletion is
+    # modelled as a flag + timestamp; ``get_current_user`` rejects deleted
+    # accounts exactly like inactive ones.
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # ─── Authorization ────────────────────────────────────────────────────────

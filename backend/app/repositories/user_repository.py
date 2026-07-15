@@ -43,16 +43,22 @@ class UserRepository:
         )
         return result.scalar_one_or_none()
 
-    async def email_exists(self, email: str) -> bool:
-        result = await self.session.execute(
-            select(User.id).where(User.email == email.strip().lower())
-        )
+    async def email_exists(
+        self, email: str, *, exclude_user_id: Optional[str] = None
+    ) -> bool:
+        stmt = select(User.id).where(User.email == email.strip().lower())
+        if exclude_user_id is not None:
+            stmt = stmt.where(User.id != exclude_user_id)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
-    async def username_exists(self, username: str) -> bool:
-        result = await self.session.execute(
-            select(User.id).where(User.username == username.strip().lower())
-        )
+    async def username_exists(
+        self, username: str, *, exclude_user_id: Optional[str] = None
+    ) -> bool:
+        stmt = select(User.id).where(User.username == username.strip().lower())
+        if exclude_user_id is not None:
+            stmt = stmt.where(User.id != exclude_user_id)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
     # ─── Writes ───────────────────────────────────────────────────────────────
