@@ -1,6 +1,6 @@
 export const vaccinations = [{
     id:1,
-    petName:"somesh sharma",
+    petName:"Luna",
     vaccine:"Rabies vaccine",
     dueDate: "10 Jul 2026",
     daysLeft:2,

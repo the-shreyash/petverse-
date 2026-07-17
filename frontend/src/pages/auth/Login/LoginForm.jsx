@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { Mail } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -17,38 +16,33 @@ const LoginForm = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     setIsLoading(true);
     setError("");
-  
+
     try {
-      const response = await axios.post(
-        "http://127.0.0.1:8000/api/v1/auth/login",
-        {
-          email,
-          password,
-        }
-      );
-  
-      // The new FastAPI backend returns tokens inside a "tokens" object
-      const token = response.data.tokens ? response.data.tokens.access_token : response.data.token;
-      localStorage.setItem("token", token);
-  
-      navigate("/dashboard");
-  
-    } catch (err) {
-      if (err.response) {
-        const data = err.response.data;
-        if (data.details && data.details.length > 0) {
-          setError(data.details.map(d => `${d.field.split(' → ').pop()}: ${d.message}`).join(" | "));
-        } else {
-          setError(data.message || "Login failed");
-        }
-      } else {
-        setError("Server Error");
+      const response = await fetch("http://127.0.0.1:5001/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
       }
+      
+      const token = data.token;
+      localStorage.setItem("token", token);
+
+      navigate("/dashboard");
+
+    } catch (err) {
+      setError(err.message || "Server Error");
     } finally {
       setIsLoading(false);
     }

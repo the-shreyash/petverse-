@@ -29,86 +29,79 @@ def home():
 @app.route("/signup", methods=["POST"])
 def signup():
     cursor = db.cursor()
-
     data = request.get_json()
 
-    full_name = data["full_name"]
-    email = data["email"]
-    phone = data["phone"]
-    password = data["password"]
+    full_name = data.get("full_name")
+    email = data.get("email")
+    password = data.get("password")
 
-    # Hash password using bcrypt
-    hashed_password = bcrypt.hashpw(
-        password.encode("utf-8"),
-        bcrypt.gensalt()
-    ).decode("utf-8")
+    if not all([full_name, email, password]):
+        return {"message": "Missing required fields"}, 400
+
+    name_parts = full_name.split()
+    first_name = name_parts[0]
+    last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+    import uuid
+    username = email.split('@')[0] + str(uuid.uuid4())[:4]
+    
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    user_id = str(uuid.uuid4())
+    now = datetime.datetime.utcnow()
 
     query = """
-    INSERT INTO users (full_name, email, phone, password)
-    VALUES (%s, %s, %s, %s)
+    INSERT INTO users (id, first_name, last_name, username, email, password_hash, is_active, is_verified, role, provider, created_at, updated_at, timezone, language, is_deleted)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
+    
+    try:
+        cursor.execute(query, (
+            user_id, first_name, last_name, username, email, hashed_password,
+            1, 0, 'user', 'local', now, now, 'UTC', 'en', 0
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return {"message": str(e)}, 500
+    finally:
+        cursor.close()
 
-    cursor.execute(
-        query,
-        (full_name, email, phone, hashed_password)
-    )
-
-    db.commit()
-    cursor.close()
-
-    return {
-        "message": "User Registered Successfully"
-    }
+    return {"message": "User Registered Successfully"}
 
 # ✅ LOGIN API
 @app.route("/login", methods=["POST"])
 def login():
-
     data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
 
-    email = data["email"]
-    password = data["password"]
+    if not email or not password:
+        return {"message": "Missing email or password"}, 400
 
-    cursor = db.cursor()
-
+    cursor = db.cursor(dictionary=True)
     query = "SELECT * FROM users WHERE email = %s"
-
     cursor.execute(query, (email,))
-
     user = cursor.fetchone()
 
     if user is None:
         return {"message": "User not found"}, 404
 
-    # Database me stored hashed password
-    db_password = user[4]
+    db_password = user.get("password_hash")
+    if not db_password:
+        return {"message": "Invalid password"}, 401
 
-    # Check password using bcrypt
-    if bcrypt.checkpw(
-        password.encode("utf-8"),
-        db_password.encode("utf-8")
-    ):
-
-        # Generate JWT Token
+    if bcrypt.checkpw(password.encode("utf-8"), db_password.encode("utf-8")):
         token = jwt.encode(
             {
-                "user_id": user[0],
-                "email": user[2],
+                "user_id": user["id"],
+                "email": user["email"],
                 "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
             },
             app.config["SECRET_KEY"],
             algorithm="HS256"
         )
-
-        return {
-            "message": "Login successful",
-            "token": token
-        }
-
+        return {"message": "Login successful", "token": token}
     else:
-        return {
-            "message": "Wrong password"
-        }, 401
+        return {"message": "Wrong password"}, 401
     
 # ✅ add_pet API (OUTSIDE login)
 @app.route("/add_pet", methods=["POST"])
@@ -147,7 +140,31 @@ def view_pets(user_id):
 
     cursor.execute(query, (user_id,))
 
-    pets = cursor.fetchall()
+    pets_db = cursor.fetchall()
+    
+    pets = []
+    for p in pets_db:
+        pets.append({
+            "id": f"pet-{p['pet_id']}",
+            "name": p["pet_name"],
+            "species": p["pet_type"],
+            "breed": p["breed"],
+            "gender": p["gender"],
+            "birthDate": str(p["dob"]) if p["dob"] else "",
+            "weight": float(p["weight"]) if p["weight"] else 0.0,
+            "color": p["color"],
+            "microchip": "",
+            "profileImage": p["photo"],
+            "gallery": [p["photo"]] if p["photo"] else [],
+            "medicalHistory": [],
+            "vaccinations": [],
+            "feedingPreferences": {},
+            "documents": [],
+            "appointments": [],
+            "healthScore": 100,
+            "owner": "",
+            "weightHistory": []
+        })
 
     return {
         "pets": pets
@@ -247,19 +264,29 @@ def view_appointments(user_id):
     cursor = db.cursor(dictionary=True)
 
     query = """
-    SELECT * FROM appointments
-    WHERE user_id = %s
+    SELECT a.*, p.pet_name 
+    FROM appointments a
+    LEFT JOIN pets p ON a.pet_id = p.pet_id
+    WHERE a.user_id = %s
     """
 
     cursor.execute(query, (user_id,))
 
-    appointments = cursor.fetchall()
+    appointments_db = cursor.fetchall()
 
-    # Convert date, time & created_at to string
-    for appointment in appointments:
-        appointment["appointment_date"] = str(appointment["appointment_date"])
-        appointment["appointment_time"] = str(appointment["appointment_time"])
-        appointment["created_at"] = str(appointment["created_at"])
+    appointments = []
+    for a in appointments_db:
+        appointments.append({
+            "id": a["appointment_id"],
+            "pet": a["pet_name"] or f"Pet #{a['pet_id']}",
+            "doctor": "Assigned Vet",
+            "clinic": "PetVerse Clinic",
+            "date": str(a["appointment_date"]) if a["appointment_date"] else "",
+            "time": str(a["appointment_time"]) if a["appointment_time"] else "",
+            "status": "Scheduled",
+            "reason": a["reason"],
+            "created_at": str(a.get("created_at", ""))
+        })
 
     return {
         "appointments": appointments
@@ -309,11 +336,30 @@ def view_products():
 
     cursor.execute(query)
 
-    products = cursor.fetchall()
+    products_db = cursor.fetchall()
 
-    # Convert created_at to string
-    for product in products:
-        product["created_at"] = str(product["created_at"])
+    products = []
+    for p in products_db:
+        products.append({
+            "id": f"prod-{p['product_id']}",
+            "name": p["product_name"],
+            "brand": "PetVerse",
+            "category": p["category"],
+            "description": p["description"],
+            "price": float(p["price"]) if p["price"] else 0.0,
+            "discount": 0,
+            "rating": 5.0,
+            "reviews": [],
+            "stock": p["stock"],
+            "images": [p["image"]] if p["image"] else [],
+            "nutrition": {},
+            "ingredients": [],
+            "petTypes": [],
+            "breedCompatibility": [],
+            "ageCompatibility": [],
+            "subscriptionSupported": False,
+            "created_at": str(p.get("created_at", ""))
+        })
 
     return {
         "products": products
@@ -586,24 +632,27 @@ def place_order():
 
     return {"message": "Order Placed Successfully"}
 # ✅ DASHBOARD API
-@app.route("/dashboard/<int:user_id>", methods=["GET"])
+@app.route("/dashboard/<user_id>", methods=["GET"])
 def dashboard(user_id):
 
     token = request.headers.get("Authorization")
 
-    if not token:
+    if token:
+        # Strip Bearer if present
+        if token.startswith("Bearer "):
+            token = token[7:]
+        decoded_user = verify_token(token)
+        if decoded_user is None:
+            return {"message": "Invalid Token"}, 401
+    else:
+        # If no token, maybe we are testing locally without auth, but let's strictly require it:
         return {"message": "Token Missing"}, 401
-
-    decoded_user = verify_token(token)
-
-    if decoded_user is None:
-        return {"message": "Invalid Token"}, 401
 
     cursor = db.cursor(dictionary=True)
 
     # User Details
     cursor.execute(
-        "SELECT user_id, full_name, email, phone FROM users WHERE user_id=%s",
+        "SELECT id as user_id, CONCAT(first_name, ' ', last_name) as full_name, email, phone_number as phone FROM users WHERE id=%s",
         (user_id,)
     )
 
@@ -614,7 +663,7 @@ def dashboard(user_id):
 
     # Total Pets
     cursor.execute(
-        "SELECT COUNT(*) AS total_pets FROM pets WHERE user_id=%s",
+        "SELECT COUNT(*) AS total_pets FROM pets WHERE owner_id=%s",
         (user_id,)
     )
     total_pets = cursor.fetchone()

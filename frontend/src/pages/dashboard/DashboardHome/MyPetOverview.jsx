@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 const pets = [
   {
     id: 1,
-    name: "somesh sharma",
+    name: "Luna",
     breed: "Golden Retriever",
     age: "21 Years",
     health: "Healthy",

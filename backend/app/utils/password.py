@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import re
 
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.config import get_settings
 
@@ -35,14 +35,6 @@ MAX_PASSWORD_LENGTH = 72
 
 _settings = get_settings()
 
-# A single shared context. ``deprecated="auto"`` lets us add stronger schemes
-# later and have passlib flag old hashes for rehashing on next login.
-_pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=_settings.BCRYPT_ROUNDS,
-)
-
 
 class PasswordPolicyError(ValueError):
     """Raised when a candidate password fails the strength policy."""
@@ -50,7 +42,10 @@ class PasswordPolicyError(ValueError):
 
 def hash_password(plain_password: str) -> str:
     """Hash a plain-text password with bcrypt (auto-salted)."""
-    return _pwd_context.hash(plain_password)
+    password_bytes = plain_password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=_settings.BCRYPT_ROUNDS)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -63,14 +58,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
     try:
-        return _pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
     except (ValueError, TypeError):
         return False
 
 
 def needs_rehash(hashed_password: str) -> bool:
     """True if the hash was made with outdated parameters and should be upgraded."""
-    return _pwd_context.needs_update(hashed_password)
+    try:
+        parts = hashed_password.split("$")
+        if len(parts) >= 4:
+            rounds = int(parts[2])
+            return rounds != _settings.BCRYPT_ROUNDS
+    except Exception:
+        pass
+    return True
 
 
 def validate_password_strength(password: str) -> None:
