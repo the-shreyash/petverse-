@@ -13,6 +13,7 @@ const RegisterForm = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -42,16 +43,15 @@ const RegisterForm = () => {
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "User";
       const username = email.split("@")[0].replace(/[^a-zA-Z0-9._-]/g, "") + Math.floor(Math.random() * 1000);
 
-      const response = await fetch("http://127.0.0.1:8000/api/v1/auth/register", {
+      const response = await fetch("http://127.0.0.1:5001/signup",  {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          username: username,
+          full_name: name,
           email: email,
+          phone: phone,
           password: password,
         }),
       });
