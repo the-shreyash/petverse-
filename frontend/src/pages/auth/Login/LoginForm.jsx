@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { Mail } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -9,49 +8,40 @@ import AuthDivider from "@/components/auth/AuthDivider";
 import SocialLoginButton from "@/components/auth/SocialLoginButton";
 import RememberMe from "@/components/auth/RememberMe";
 import { authTheme } from "@/styles/authTheme";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
     setIsLoading(true);
     setError("");
-  
+
     try {
-      const response = await axios.post(
-        "http://127.0.0.1:5001/login",
-        {
-          email,
-          password,
-        }
-      );
-  
-      // The new FastAPI backend returns tokens inside a "tokens" object
-      const token = response.data.tokens ? response.data.tokens.access_token : response.data.token;
-      localStorage.setItem("token", token);
-  
+      await login({ email, password });
       navigate("/dashboard");
-  
     } catch (err) {
-      if (err.response) {
-        const data = err.response.data;
-        if (data.details && data.details.length > 0) {
-          setError(data.details.map(d => `${d.field.split(' → ').pop()}: ${d.message}`).join(" | "));
-        } else {
-          setError(data.message || "Login failed");
-        }
-      } else {
-        setError("Server Error");
-      }
+      const detail = err?.response?.data?.detail
+        || err?.response?.data?.message
+        || err?.response?.data?.error
+        || "Invalid email or password";
+      setError(detail);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    // Redirect to backend Google OAuth
+    const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    window.location.href = `${backendUrl}/auth/google/login`;
   };
 
   return (
@@ -102,14 +92,14 @@ const LoginForm = () => {
 
       {/* Submit Button */}
       <AuthButton type="submit" isLoading={isLoading}>
-        Continue
+        Sign In
       </AuthButton>
 
       {/* Divider */}
       <AuthDivider />
 
       {/* Google Login */}
-      <SocialLoginButton provider="google" onClick={() => alert("Google Login simulated")} />
+      <SocialLoginButton provider="google" onClick={handleGoogleLogin} />
 
       {/* Navigation Option */}
       <p className="text-center text-sm text-slate-500 pt-2">

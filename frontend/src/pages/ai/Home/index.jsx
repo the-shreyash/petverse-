@@ -33,9 +33,28 @@ export default function AIHome() {
   if (!activePet) {
     return (
       <DashboardLayout pageTitle="AI Assistant" pageDescription="Intelligent layer.">
-        <div className="flex h-64 items-center justify-center rounded-[30px] border border-dashed border-slate-200 bg-white">
-          <p className="font-bold text-slate-400">Loading AI context...</p>
-        </div>
+        {healthDomain.loading ? (
+          <div className="flex h-64 items-center justify-center rounded-[30px] border border-dashed border-slate-200 bg-white">
+            <p className="font-bold text-slate-400">Loading AI context...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-[50vh] rounded-[30px] border border-dashed border-slate-300 bg-white p-8 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-50 text-indigo-500 mb-6">
+              <Bot size={40} />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 mb-3 tracking-tight">AI Assistant is Waiting</h2>
+            <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+              To provide personalized insights, diet plans, and health analyses, the AI Assistant needs to know about your pets. Add your first pet to get started.
+            </p>
+            <Link
+              to="/pets/add"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg transition hover:-translate-y-0.5"
+            >
+              <span>Add Your First Pet</span>
+              <Sparkles size={16} />
+            </Link>
+          </div>
+        )}
       </DashboardLayout>
     );
   }

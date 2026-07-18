@@ -4,11 +4,13 @@ app/modules/shop/services/order_service.py
 Checkout flow and order status management.
 """
 
+from decimal import Decimal
 from typing import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 from app.modules.shop.models.order import Order, OrderItem, OrderStatus
+from app.modules.shop.models.product import Product
 from app.modules.shop.repositories.shop_repositories import OrderRepository, ProductRepository
 from app.modules.shop.services.cart_service import CartService
 
@@ -29,10 +31,13 @@ class OrderService:
         if not cart.items:
             raise HTTPException(status_code=400, detail="Cart is empty")
 
-        total_amount = sum(item.product.price * item.quantity for item in cart.items)
-        
+        total_amount = sum(
+            (item.product.price * item.quantity for item in cart.items),
+            Decimal("0"),
+        )
+
         # In a real system, tax calculation would be here.
-        tax_amount = total_amount * 0.10 # 10% flat tax placeholder
+        tax_amount = total_amount * Decimal("0.10")  # 10% flat tax
         
         order = Order(
             user_id=user_id,

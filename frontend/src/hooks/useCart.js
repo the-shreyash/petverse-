@@ -1,58 +1,73 @@
 import { useState, useEffect, useCallback } from "react";
-import { getStoredCart, saveStoredCart, getStoredOrders, saveStoredOrders } from "@/mock/products";
+import api from "@/services/api";
 import { publishEvent } from "@/utils/events";
 
 export function useCart() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState({ items: [], id: null });
   const [promoCode, setPromoCode] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
 
+  const fetchCart = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await api.get("/shop/cart");
+      setCart(res.data || { items: [], id: null });
+    } catch (err) {
+      console.error("Failed to fetch cart", err);
+    }
+  }, []);
+
   useEffect(() => {
-    setCart(getStoredCart());
-  }, []);
+    fetchCart();
+  }, [fetchCart]);
 
-  const addToCart = useCallback((product, quantity = 1, isSubscription = false) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id && item.isSubscription === isSubscription);
-      let updated;
-      if (existing) {
-        updated = prev.map(item =>
-          item.product.id === product.id && item.isSubscription === isSubscription
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      } else {
-        updated = [...prev, { product, quantity, isSubscription }];
-      }
-      saveStoredCart(updated);
-      return updated;
-    });
-  }, []);
+  const cartItems = cart.items || [];
 
-  const removeFromCart = useCallback((productId, isSubscription) => {
-    setCart(prev => {
-      const updated = prev.filter(item => !(item.product.id === productId && item.isSubscription === isSubscription));
-      saveStoredCart(updated);
-      return updated;
-    });
-  }, []);
-
-  const updateQuantity = useCallback((productId, isSubscription, delta) => {
-    setCart(prev => {
-      const updated = prev.map(item => {
-        if (item.product.id === productId && item.isSubscription === isSubscription) {
-          const nextQty = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: nextQty };
-        }
-        return item;
+  const addToCart = useCallback(async (product, quantity = 1) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await api.post("/shop/cart", { product_id: product.id, quantity });
+      await fetchCart();
+      publishEvent({
+        type: "CART_UPDATED",
+        category: "shop",
+        title: "Added to Cart",
+        description: `${product.name} added to your cart.`,
+        priority: "low",
+        action: "/shop/cart"
       });
-      saveStoredCart(updated);
-      return updated;
-    });
-  }, []);
+    } catch (err) {
+      console.error("Failed to add to cart", err);
+    }
+  }, [fetchCart]);
+
+  const removeFromCart = useCallback(async (itemId) => {
+    try {
+      await api.delete(`/shop/cart/${itemId}`);
+      await fetchCart();
+    } catch (err) {
+      console.error("Failed to remove from cart", err);
+    }
+  }, [fetchCart]);
+
+  const updateQuantity = useCallback(async (itemId, newQuantity) => {
+    if (newQuantity < 1) {
+      return removeFromCart(itemId);
+    }
+    try {
+      // Backend expects `quantity` as a query parameter, not a JSON body.
+      await api.patch(`/shop/cart/${itemId}`, null, { params: { quantity: newQuantity } });
+      await fetchCart();
+    } catch (err) {
+      console.error("Failed to update quantity", err);
+    }
+  }, [fetchCart, removeFromCart]);
 
   const applyCoupon = useCallback((code) => {
     setPromoCode(code);
+    // Hardcoded promos until backend promo endpoint is wired
     if (code.toLowerCase() === "petverse10") {
       setDiscountPercent(10);
       return true;
@@ -66,57 +81,55 @@ export function useCart() {
   }, []);
 
   const clearCart = useCallback(() => {
-    setCart([]);
-    saveStoredCart([]);
+    setCart({ items: [], id: null });
     setPromoCode("");
     setDiscountPercent(0);
   }, []);
 
-  const subtotal = cart.reduce((acc, item) => {
-    const price = item.product.price;
-    const finalPrice = item.product.discount
-      ? price * (1 - item.product.discount / 100)
-      : price;
-    return acc + finalPrice * item.quantity;
+  const subtotal = cartItems.reduce((acc, item) => {
+    const price = item.product?.price || item.price || 0;
+    const qty = item.quantity || 1;
+    return acc + price * qty;
   }, 0);
 
   const discountAmount = (subtotal * discountPercent) / 100;
   const shipping = subtotal > 49 ? 0 : 5.99;
   const total = subtotal - discountAmount + shipping;
 
-  const checkoutOrder = useCallback((shippingDetails, paymentDetails) => {
-    const orders = getStoredOrders();
-    const newOrder = {
-      id: `ord-${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      items: cart,
-      subtotal,
-      discount: discountAmount,
-      shipping,
-      total,
-      shippingDetails,
-      paymentDetails,
-      status: "Processing"
-    };
+  const checkoutOrder = useCallback(async (shippingDetails, paymentDetails) => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
 
-    const updated = [newOrder, ...orders];
-    saveStoredOrders(updated);
+    try {
+      const response = await api.post("/shop/orders", {
+        shipping_address: shippingDetails,
+        payment_method: paymentDetails?.method || "card",
+        cart_id: cart.id
+      });
 
-    publishEvent({
-      type: "ORDER_SHIPPED",
-      category: "shop",
-      title: "Order Placed Successfully",
-      description: `Your order #${newOrder.id} has been received and is now processing! Total: $${newOrder.total.toFixed(2)}.`,
-      priority: "medium",
-      action: "/shop/orders"
-    });
+      const order = response.data;
 
-    clearCart();
-    return newOrder;
-  }, [cart, subtotal, discountAmount, shipping, total, clearCart]);
+      publishEvent({
+        type: "ORDER_PLACED",
+        category: "shop",
+        title: "Order Placed Successfully",
+        description: `Your order has been received! Total: $${total.toFixed(2)}.`,
+        priority: "medium",
+        action: "/shop/orders"
+      });
+
+      clearCart();
+      await fetchCart();
+      return order;
+    } catch (err) {
+      console.error("Checkout failed", err);
+      return null;
+    }
+  }, [cart, total, clearCart, fetchCart]);
 
   return {
-    cart,
+    cart: cartItems,
+    cartData: cart,
     promoCode,
     discountPercent,
     discountAmount,

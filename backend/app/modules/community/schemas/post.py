@@ -20,10 +20,37 @@ class PostUpdate(BaseModel):
     visibility: Optional[PostVisibility] = None
     location: Optional[str] = None
 
+class AuthorResponse(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    avatar_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PostCommentResponse(BaseModel):
+    id: str
+    post_id: str
+    author_id: str
+    content: str
+    parent_comment_id: Optional[str] = None
+    created_at: datetime
+    author: Optional[AuthorResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class PostResponse(PostBase):
     id: str
     author_id: str
+    author: Optional[AuthorResponse] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+    likes_count: int = 0
+    comments_count: int = 0
+    liked_by_me: bool = False
+    bookmarked_by_me: bool = False
+
     model_config = ConfigDict(from_attributes=True)
+
+class PostDetailResponse(PostResponse):
+    comments: List[PostCommentResponse] = []

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { productImage } from "@/utils/shopImage";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ChevronLeft, ShoppingBag, Star, Sparkles, AlertTriangle, Check, ShieldCheck, Heart } from "lucide-react";
 import { motion } from "framer-motion";
@@ -89,7 +90,7 @@ export default function ProductDetailView() {
           <div className="lg:col-span-5 space-y-4">
             <div className="overflow-hidden rounded-3xl border border-slate-100 bg-slate-50/50 aspect-square relative">
               <img
-                src={product.images?.[0]}
+                src={productImage(product)}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />

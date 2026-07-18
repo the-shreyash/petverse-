@@ -21,8 +21,24 @@ class ProductService:
     async def get_all_categories(self) -> Sequence[Category]:
         return await self.category_repo.get_all()
 
-    async def get_products(self, skip: int = 0, limit: int = 100) -> Sequence[Product]:
-        return await self.product_repo.get_all(skip=skip, limit=limit)
+    async def get_products(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        category: Optional[str] = None,
+    ) -> Sequence[Product]:
+        stmt = select(Product).where(Product.is_active.is_(True))
+        if category:
+            # Accept either a category id or a category name (case-insensitive).
+            stmt = stmt.join(Category, Product.category_id == Category.id).where(
+                or_(
+                    Product.category_id == category,
+                    Category.name.ilike(category),
+                )
+            )
+        stmt = stmt.offset(skip).limit(limit)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
     async def get_product_by_id(self, product_id: str) -> Optional[Product]:
         return await self.product_repo.get_by_id(product_id)

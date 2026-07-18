@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useHealth } from "./useHealth";
 
 /**
- * useVaccinations — Domain-specific hook for the Vaccination Center.
- * Wraps useHealth() and surfaces vaccination-specific computed data.
- * Swap the data source for API later without touching UI components.
+ * useVaccinations — Domain hook for the Vaccination Center.
+ * Backed by the real /pets/{id}/health/vaccinations API via useHealth().
+ * `vaccinations` are already normalized ({ name, status, dateAdministered, dateDue }).
  */
 export function useVaccinations() {
   const {
@@ -12,30 +12,9 @@ export function useVaccinations() {
     selectedPetId,
     selectedPet,
     changeSelectedPet,
-    records,
-    addRecord
+    vaccinations,
+    addVaccination
   } = useHealth();
-
-  const vaccinations = useMemo(() => {
-    const all = [];
-    records.forEach((rec) => {
-      if (rec.vaccinations?.length > 0) {
-        rec.vaccinations.forEach((vax, idx) => {
-          all.push({
-            ...vax,
-            id: `${rec.id}-vax-${idx}`,
-            recordId: rec.id,
-            veterinarian: rec.veterinarian,
-            clinic: rec.clinic,
-            visitDate: rec.visitDate
-          });
-        });
-      }
-    });
-    return all.sort((a, b) =>
-      new Date(b.dateAdministered || b.visitDate) - new Date(a.dateAdministered || a.visitDate)
-    );
-  }, [records]);
 
   const completed = useMemo(
     () => vaccinations.filter((v) => v.status === "Completed"),
@@ -48,10 +27,7 @@ export function useVaccinations() {
   );
 
   const upcoming = useMemo(
-    () =>
-      vaccinations.filter(
-        (v) => v.status === "Upcoming" || v.status === "Vaccination Due"
-      ),
+    () => vaccinations.filter((v) => v.status === "Upcoming"),
     [vaccinations]
   );
 
@@ -61,11 +37,25 @@ export function useVaccinations() {
   }, [vaccinations, completed]);
 
   const nextDue = useMemo(() => {
-    const sorted = [...upcoming, ...overdue].sort(
-      (a, b) => new Date(a.dateDue) - new Date(b.dateDue)
-    );
+    const sorted = [...upcoming, ...overdue]
+      .filter((v) => v.dateDue)
+      .sort((a, b) => new Date(a.dateDue) - new Date(b.dateDue));
     return sorted[0] || null;
   }, [upcoming, overdue]);
+
+  // Adapts the VaccinationForm payload (legacy nested or flat) to the real API.
+  const addRecord = useCallback(
+    async (formPayload) => {
+      const vax = formPayload.vaccinations?.[0] || formPayload;
+      return addVaccination({
+        vaccine_name: vax.name || vax.vaccine_name,
+        dateAdministered: vax.dateAdministered || formPayload.visitDate,
+        dateDue: vax.dateDue,
+        status: vax.status
+      });
+    },
+    [addVaccination]
+  );
 
   return {
     pets,

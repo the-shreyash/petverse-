@@ -15,6 +15,7 @@ Adding a new Phase B router:
 from fastapi import APIRouter
 
 from app.modules.auth.routers.auth import router as auth_router
+from app.modules.auth.routers.oauth import router as oauth_router
 from app.api.v1.health import router as health_router
 from app.modules.pet.routers.pets import router as pets_router
 from app.modules.user.routers.users import router as users_router
@@ -31,6 +32,7 @@ api_v1_router.include_router(health_router)
 
 # ── Phase B2 (Auth & Identity) ─────────────────────────────────────────────────
 api_v1_router.include_router(auth_router, prefix="/auth", tags=["Auth"])
+api_v1_router.include_router(oauth_router, prefix="/auth", tags=["Auth - OAuth"])
 
 # ── Phase B3 (User Account Management) ─────────────────────────────────────────
 api_v1_router.include_router(users_router, prefix="/users", tags=["Users"])

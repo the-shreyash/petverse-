@@ -5,34 +5,35 @@ import {
   Brain,
 } from "lucide-react";
 
-const stats = [
-  {
-    title: "Total Pets",
-    value: "3",
-    icon: PawPrint,
-    color: "bg-cyan-100 text-cyan-600",
-  },
-  {
-    title: "Health Score",
-    value: "96%",
-    icon: HeartPulse,
-    color: "bg-rose-100 text-rose-500",
-  },
-  {
-    title: "Appointments",
-    value: "2",
-    icon: CalendarDays,
-    color: "bg-amber-100 text-amber-600",
-  },
-  {
-    title: "AI Insights",
-    value: "5",
-    icon: Brain,
-    color: "bg-emerald-100 text-emerald-600",
-  },
-];
+const DashboardStats = ({ data }) => {
+  const healthScore = data?.average_health_score ?? 0;
+  const stats = [
+    {
+      title: "Total Pets",
+      value: data?.total_pets ?? 0,
+      icon: PawPrint,
+      color: "bg-cyan-100 text-cyan-600",
+    },
+    {
+      title: "Avg Health Score",
+      value: healthScore ? `${Math.round(healthScore)}%` : "—",
+      icon: HeartPulse,
+      color: "bg-rose-100 text-rose-500",
+    },
+    {
+      title: "Appointments This Week",
+      value: data?.appointments_this_week ?? 0,
+      icon: CalendarDays,
+      color: "bg-amber-100 text-amber-600",
+    },
+    {
+      title: "Vaccinations Due",
+      value: data?.vaccinations_due ?? 0,
+      icon: Brain,
+      color: "bg-emerald-100 text-emerald-600",
+    },
+  ];
 
-const DashboardStats = () => {
   return (
     <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
       {stats.map((item) => {

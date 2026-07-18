@@ -1,82 +1,97 @@
 import { useState, useEffect, useCallback } from "react";
-import { getStoredNotifications, saveStoredNotifications } from "@/mock/notifications";
-import { getStoredEvents, subscribeToEvents, markEventAsRead, markAllEventsAsRead, deleteEvent } from "@/utils/events";
+import api from "@/services/api";
+import { subscribeToEvents } from "@/utils/events";
+
+// Maps backend notification `type` + `entity_type` into a UI category the
+// Notification Center filters on (health / ai / community / shop / adoption / system).
+const categoryFor = (n) => {
+  const et = (n.entity_type || "").toLowerCase();
+  if (et.includes("adopt")) return "adoption";
+  if (et.includes("order") || et.includes("cart") || et.includes("product") || et.includes("shop")) return "shop";
+  if (et.includes("appointment") || et.includes("vaccination") || et.includes("medication") || et.includes("health")) return "health";
+  if (et.includes("ai")) return "ai";
+  const t = (n.type || "").toUpperCase();
+  if (t === "SOCIAL") return "community";
+  if (t === "COMMERCE") return "shop";
+  if (t === "REMINDER") return "health";
+  return "system";
+};
+
+const mapNotification = (n) => ({
+  id: n.id,
+  type: (n.type || "system").toLowerCase(),
+  title: n.title,
+  description: n.body || n.message || "",
+  priority: (n.priority || "low").toLowerCase(),
+  category: categoryFor(n),
+  timestamp: n.created_at,
+  isRead: n.status === "READ" || n.read_at != null,
+  icon: "Bell",
+  action: n.action_url || null
+});
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Merge pre-loaded notifications and dynamic event log events
-  const loadMergedNotifications = useCallback(() => {
-    const defaultNotifs = getStoredNotifications();
-    const eventBusNotifs = getStoredEvents().map((evt) => {
-      // Map standard event bus items to notification visual layout
-      return {
-        id: evt.id,
-        type: evt.type,
-        title: evt.title,
-        description: evt.description,
-        priority: evt.priority,
-        category: evt.category,
-        timestamp: evt.timestamp,
-        isRead: evt.isRead,
-        action: evt.action,
-        pet: evt.petId ? { name: "Pet" } : undefined, // Quick ref
-        icon: getCategoryIcon(evt.category)
-      };
-    });
+  const fetchNotifications = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
-    // Deduplicate by ID
-    const merged = [...eventBusNotifs, ...defaultNotifs];
-    const unique = Array.from(new Map(merged.map((item) => [item.id, item])).values());
-    
-    // Sort by timestamp desc
-    return unique.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    try {
+      const response = await api.get("/notifications?limit=100");
+      const raw = response.data || [];
+      const mapped = raw.map(mapNotification);
+      setNotifications(mapped);
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    setNotifications(loadMergedNotifications());
+    fetchNotifications();
 
-    // Subscribe to Event Bus to reactively update view when events publish
+    // Subscribe to Event Bus to reactively update
     const unsubscribe = subscribeToEvents(() => {
-      setNotifications(loadMergedNotifications());
+      fetchNotifications();
     });
 
     return () => unsubscribe();
-  }, [loadMergedNotifications]);
+  }, [fetchNotifications]);
 
-  const markAsRead = useCallback((id) => {
-    // If it's a dynamic event bus notification, update it there
-    markEventAsRead(id);
+  const markAsRead = useCallback(async (id) => {
+    try {
+      await api.post(`/notifications/read/${id}`);
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
-    // Also update pre-loaded notifications
-    const defaultNotifs = getStoredNotifications();
-    const updated = defaultNotifs.map((n) =>
-      n.id === id ? { ...n, isRead: true } : n
-    );
-    saveStoredNotifications(updated);
+  const markAllRead = useCallback(async () => {
+    try {
+      await api.post("/notifications/read-all");
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
-    setNotifications(loadMergedNotifications());
-  }, [loadMergedNotifications]);
-
-  const markAllRead = useCallback(() => {
-    markAllEventsAsRead();
-
-    const defaultNotifs = getStoredNotifications();
-    const updated = defaultNotifs.map((n) => ({ ...n, isRead: true }));
-    saveStoredNotifications(updated);
-
-    setNotifications(loadMergedNotifications());
-  }, [loadMergedNotifications]);
-
-  const deleteNotification = useCallback((id) => {
-    deleteEvent(id);
-
-    const defaultNotifs = getStoredNotifications();
-    const updated = defaultNotifs.filter((n) => n.id !== id);
-    saveStoredNotifications(updated);
-
-    setNotifications(loadMergedNotifications());
-  }, [loadMergedNotifications]);
+  const deleteNotification = useCallback(async (id) => {
+    try {
+      await api.delete(`/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -85,26 +100,10 @@ export function useNotifications() {
     unreadCount,
     markAsRead,
     markAllRead,
-    deleteNotification
+    deleteNotification,
+    loading,
+    refresh: fetchNotifications
   };
-}
-
-// Utility mapper to match category types to Lucide Icons
-function getCategoryIcon(category) {
-  switch (category) {
-    case "health":
-      return "HeartPulse";
-    case "ai":
-      return "Bot";
-    case "shop":
-      return "ShoppingBag";
-    case "community":
-      return "MessageSquare";
-    case "adoption":
-      return "Heart";
-    default:
-      return "Bell";
-  }
 }
 
 export default useNotifications;

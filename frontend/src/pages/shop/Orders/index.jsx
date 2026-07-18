@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { ShoppingBag, ChevronLeft, Calendar, FileText, CheckCircle } from "lucide-react";
+import { ChevronLeft, Calendar, FileText, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/layout";
-import { getStoredOrders } from "@/mock/products";
+import { useOrders } from "@/hooks/useOrders";
+import { productImage } from "@/utils/shopImage";
 
-export default function OrdersView() {
-  const [orders, setOrders] = useState([]);
-
-  useEffect(() => {
-    setOrders(getStoredOrders());
-  }, []);
+export default function OrderHistory() {
+  const { orders, loading } = useOrders();
 
   return (
     <DashboardLayout
@@ -24,7 +21,13 @@ export default function OrdersView() {
           <span>Back to shop</span>
         </Link>
 
-        {orders.length > 0 ? (
+        {loading ? (
+          <div className="space-y-4">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="h-40 rounded-3xl bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : orders.length > 0 ? (
           <div className="space-y-4">
             {orders.map((ord) => (
               <motion.div
@@ -58,18 +61,18 @@ export default function OrdersView() {
                   {ord.items?.map((item, idx) => (
                     <div key={idx} className="flex gap-3 text-xs items-center">
                       <img
-                        src={item.product.images?.[0]}
+                        src={productImage(item.product)}
                         alt=""
                         className="h-10 w-10 rounded-lg object-cover border border-slate-100 shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-slate-700 truncate leading-tight">{item.product.name}</p>
                         <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                          Quantity: {item.quantity} {item.isSubscription ? "· Auto-Ship Delivery" : ""}
+                          Quantity: {item.quantity}
                         </p>
                       </div>
                       <span className="font-black text-slate-800 shrink-0">
-                        ${(item.product.price * (1 - (item.product.discount || 0) / 100) * item.quantity).toFixed(2)}
+                        ${(item.price * item.quantity).toFixed(2)}
                       </span>
                     </div>
                   ))}
@@ -78,7 +81,7 @@ export default function OrdersView() {
                 {/* Total amount footer summary */}
                 <div className="border-t border-slate-100 pt-3 flex justify-between items-baseline text-xs font-semibold text-slate-500">
                   <span>Total Amount Paid</span>
-                  <span className="text-sm font-black text-slate-800">${ord.total?.toFixed(2)}</span>
+                  <span className="text-sm font-black text-slate-800">${Number(ord.total || 0).toFixed(2)}</span>
                 </div>
               </motion.div>
             ))}

@@ -1,280 +1,238 @@
-import { useState, useEffect, useCallback } from "react";
-import { getStoredPets, saveStoredPets } from "@/mock/pets";
-import {
-  getStoredHealthRecords,
-  saveStoredHealthRecords,
-  getStoredAppointments,
-  saveStoredAppointments,
-  getStoredEmergencyContacts,
-  saveStoredEmergencyContacts,
-  getStoredMedicalDocuments
-} from "@/mock/health";
-import { publishEvent } from "@/utils/events";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { usePets } from "./usePets";
+import api from "@/services/api";
+
+const combineDateTime = (date, time) => {
+  if (!date) return undefined;
+  // If already a full ISO string, pass through.
+  if (typeof date === "string" && date.includes("T")) return date;
+  if (time && /^\d{1,2}:\d{2}$/.test(time)) {
+    const [h, m] = time.split(":");
+    return `${date}T${h.padStart(2, "0")}:${m}:00`;
+  }
+  return `${date}T09:00:00`;
+};
+
+const mapVaccination = (v) => {
+  const due = v.next_due_date || v.next_due || null;
+  const administered = v.administration_date || v.date_administered || null;
+  const raw = (v.status || "").toLowerCase();
+  const startOfToday = new Date(new Date().toDateString());
+  let status = "Completed";
+  if (due && new Date(due) < startOfToday) {
+    status = "Overdue";
+  } else if (raw && !["administered", "completed", "done"].includes(raw)) {
+    status = "Upcoming";
+  }
+  return {
+    id: v.id,
+    name: v.vaccine_name || v.name || "Vaccine",
+    vaccine_name: v.vaccine_name || v.name || "Vaccine",
+    status,
+    dateAdministered: administered,
+    dateDue: due,
+    next_due_date: due,
+    manufacturer: v.manufacturer || null,
+    notes: v.notes || ""
+  };
+};
+
+const mapAppointment = (a) => {
+  const visit = a.visit_date || a.visitDate || null;
+  let time = "";
+  if (visit) {
+    const d = new Date(visit);
+    if (!isNaN(d.getTime())) {
+      time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+  return {
+    id: a.id,
+    visitDate: visit,
+    time,
+    reason: a.reason || "Vet visit",
+    notes: a.notes || "",
+    veterinarian: a.veterinarian || "",
+    clinic: a.clinic_name || a.clinic?.name || "",
+    status: a.status || "Scheduled"
+  };
+};
 
 export function useHealth() {
-  const [pets, setPets] = useState([]);
-  const [selectedPetId, setSelectedPetId] = useState("");
+  const { pets, selectedPetId, selectedPet, changeSelectedPet } = usePets();
   const [records, setRecords] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [emergencyContacts, setEmergencyContacts] = useState([]);
+  const [vaccinations, setVaccinations] = useState([]);
+  const [appointments, setAppointments] = useState([]); // Needed for dashboard
+  const [healthScore, setHealthScore] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load initial datasets
+  const fetchHealthData = useCallback(async () => {
+    if (!selectedPetId) {
+      setRecords([]);
+      setVaccinations([]);
+      setAppointments([]);
+      setHealthScore(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const unwrap = (res) => res.data?.data ?? res.data ?? [];
+
+      const [recordsRes, vaxRes, apptRes, scoreRes] = await Promise.all([
+        api.get(`/pets/${selectedPetId}/health/medical-records`),
+        api.get(`/pets/${selectedPetId}/health/vaccinations`),
+        api.get(`/pets/${selectedPetId}/health/appointments`),
+        api.get(`/pets/${selectedPetId}/health/score`).catch(() => null),
+      ]);
+
+      setRecords(unwrap(recordsRes));
+      setVaccinations((unwrap(vaxRes) || []).map(mapVaccination));
+      setAppointments((unwrap(apptRes) || []).map(mapAppointment));
+      setHealthScore(scoreRes ? (scoreRes.data?.data ?? scoreRes.data ?? null) : null);
+    } catch (err) {
+      console.error("Failed to fetch health data", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedPetId]);
+
   useEffect(() => {
-    const loadedPets = getStoredPets();
-    setPets(loadedPets);
+    fetchHealthData();
+  }, [fetchHealthData]);
 
-    // Get active pet or default to first
-    const savedActiveId = localStorage.getItem("petverse_selected_pet_id");
-    if (savedActiveId && loadedPets.some(p => p.id === savedActiveId)) {
-      setSelectedPetId(savedActiveId);
-    } else if (loadedPets.length > 0) {
-      setSelectedPetId(loadedPets[0].id);
-      localStorage.setItem("petverse_selected_pet_id", loadedPets[0].id);
+  const addRecord = useCallback(async (recordData) => {
+    try {
+      const response = await api.post(`/pets/${selectedPetId}/health/medical-records`, {
+        record_type: recordData.record_type || "Checkup",
+        notes: recordData.notes || "",
+        diagnosis: recordData.diagnosis || "",
+        treatment: recordData.treatment || ""
+      });
+      if (response.status === 201 || response.status === 200) {
+        fetchHealthData();
+      }
+    } catch (err) {
+      console.error("Failed to add health record", err);
     }
+  }, [selectedPetId, fetchHealthData]);
 
-    setRecords(getStoredHealthRecords());
-    setAppointments(getStoredAppointments());
-    setEmergencyContacts(getStoredEmergencyContacts());
-  }, []);
-
-  const changeSelectedPet = useCallback((id) => {
-    setSelectedPetId(id);
-    localStorage.setItem("petverse_selected_pet_id", id);
-  }, []);
-
-  const selectedPet = pets.find((p) => p.id === selectedPetId) || null;
-
-  // Filter lists for active pet
-  const petRecords = records.filter((r) => r.petId === selectedPetId);
-  const petAppointments = appointments.filter((a) => a.petId === selectedPetId);
-
-  // Helper to sync derived data back to the primary pet list
-  const syncToPetProfile = useCallback((petId, updatedRecords, updatedApts) => {
-    const allPets = getStoredPets();
-    const targetPetIndex = allPets.findIndex((p) => p.id === petId);
-    if (targetPetIndex === -1) return;
-
-    const pet = allPets[targetPetIndex];
-    const petSpecificRecords = updatedRecords.filter((r) => r.petId === petId);
-    const petSpecificApts = updatedApts.filter((a) => a.petId === petId);
-
-    // 1. Calculate latest weight
-    let latestWeight = pet.weight;
-    const sortedByDate = [...petSpecificRecords].sort(
-      (a, b) => new Date(b.visitDate) - new Date(a.visitDate)
-    );
-    const recordWithWeight = sortedByDate.find((r) => r.weight > 0);
-    if (recordWithWeight) {
-      latestWeight = `${recordWithWeight.weight} kg`;
+  const addVaccination = useCallback(async (vaxData) => {
+    try {
+      const payload = {
+        vaccine_name: vaxData.vaccine_name || vaxData.name,
+        administration_date:
+          vaxData.administration_date || vaxData.dateAdministered || vaxData.date_administered ||
+          new Date().toISOString().split("T")[0],
+        next_due_date: vaxData.next_due_date || vaxData.dateDue || vaxData.next_due || null,
+        status: vaxData.status || "administered"
+      };
+      if (vaxData.manufacturer) payload.manufacturer = vaxData.manufacturer;
+      const response = await api.post(`/pets/${selectedPetId}/health/vaccinations`, payload);
+      if (response.status === 201 || response.status === 200) {
+        fetchHealthData();
+      }
+    } catch (err) {
+      console.error("Failed to add vaccination", err);
+      throw err;
     }
+  }, [selectedPetId, fetchHealthData]);
 
-    // 2. Build weight history
-    const weightHistory = petSpecificRecords
-      .filter((r) => r.weight > 0)
-      .map((r) => ({ date: r.visitDate, weight: r.weight }))
+  const addAppointment = useCallback(async (apptData) => {
+    try {
+      const response = await api.post(`/pets/${selectedPetId}/health/appointments`, {
+        visit_date: apptData.visit_date || combineDateTime(apptData.visitDate, apptData.time),
+        reason: apptData.reason,
+        notes: apptData.notes,
+        clinic_name: apptData.clinic_name || apptData.clinic || apptData.clinicName || null,
+        veterinarian: apptData.veterinarian
+      });
+      if (response.status === 201 || response.status === 200) {
+        fetchHealthData();
+      }
+    } catch (err) {
+      console.error("Failed to add appointment", err);
+      throw err;
+    }
+  }, [selectedPetId, fetchHealthData]);
+
+  const updateAppointment = useCallback(async (id, updates) => {
+    try {
+      // Normalize any camelCase date/time into a single ISO visit_date.
+      const payload = { ...updates };
+      if (payload.visitDate || payload.time) {
+        payload.visit_date = combineDateTime(payload.visitDate, payload.time);
+        delete payload.visitDate;
+        delete payload.time;
+      }
+
+      const response = await api.put(`/pets/${selectedPetId}/health/appointments/${id}`, payload);
+      if (response.status === 200) {
+        fetchHealthData();
+      }
+    } catch (err) {
+      console.error("Failed to update appointment", err);
+      throw err;
+    }
+  }, [selectedPetId, fetchHealthData]);
+
+  const searchClinics = useCallback(async (lat, lng, q = "vet clinic") => {
+    if (!selectedPetId) return [];
+    const res = await api.get(`/pets/${selectedPetId}/health/clinics/search`, {
+      params: { lat, lng, q, provider: "google" }
+    });
+    return res.data?.data ?? res.data ?? [];
+  }, [selectedPetId]);
+
+  const deleteAppointment = useCallback(async (id) => {
+    try {
+      const response = await api.delete(`/pets/${selectedPetId}/health/appointments/${id}`);
+      if (response.status === 204 || response.status === 200) {
+        fetchHealthData();
+      }
+    } catch (err) {
+      console.error("Failed to delete appointment", err);
+    }
+  }, [selectedPetId, fetchHealthData]);
+
+  // Derived metrics
+  const latestWeight = selectedPet?.weight || "0";
+  const weightHistory = useMemo(() => {
+    return records
+      .filter(r => r.record_type === "Weight" && r.notes)
+      .map(r => ({ date: r.visitDate, weight: parseFloat(r.notes) }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [records]);
 
-    // 3. Compile medical history timeline
-    const medicalHistory = petSpecificRecords.map((r) => ({
+  const medicalHistory = useMemo(() => {
+    return records.map(r => ({
       id: r.id,
       date: r.visitDate,
-      type: r.diagnosis.toLowerCase().includes("surgery") ? "Surgery" : "Checkup",
-      notes: r.treatment || r.notes,
-      diagnosis: r.diagnosis,
-      vet: r.veterinarian
+      type: r.recordType,
+      notes: r.notes,
+      vet: r.veterinarian || "Dr. Default",
+      clinic: r.clinic || "Local Clinic"
     }));
-
-    // 4. Compile vaccinations
-    const vaccinations = [];
-    petSpecificRecords.forEach((r) => {
-      if (r.vaccinations && r.vaccinations.length > 0) {
-        r.vaccinations.forEach((v, index) => {
-          vaccinations.push({
-            id: `${r.id}-vax-${index}`,
-            name: v.name,
-            dateAdministered: v.dateAdministered,
-            dateDue: v.dateDue,
-            status: v.status,
-            notes: v.notes
-          });
-        });
-      }
-    });
-
-    // 5. Compile documents
-    const documents = [];
-    petSpecificRecords.forEach((r) => {
-      if (r.attachments && r.attachments.length > 0) {
-        r.attachments.forEach((a) => {
-          documents.push({
-            id: a.id,
-            name: a.name,
-            uploadDate: a.uploadDate,
-            type: a.category,
-            fileUrl: a.url
-          });
-        });
-      }
-    });
-
-    // 6. Compile appointments
-    const pApts = petSpecificApts.map((a) => ({
-      id: a.id,
-      date: a.visitDate,
-      time: a.time,
-      reason: a.reason,
-      status: a.status,
-      doctor: a.veterinarian
-    }));
-
-    // 7. Health score
-    let latestScore = pet.healthScore || 90;
-    if (sortedByDate.length > 0 && sortedByDate[0].healthScore > 0) {
-      latestScore = sortedByDate[0].healthScore;
-    }
-
-    // Apply updates
-    allPets[targetPetIndex] = {
-      ...pet,
-      weight: latestWeight,
-      weightHistory: weightHistory.length > 0 ? weightHistory : pet.weightHistory,
-      medicalHistory: medicalHistory.length > 0 ? medicalHistory : pet.medicalHistory,
-      vaccinations: vaccinations.length > 0 ? vaccinations : pet.vaccinations,
-      documents: documents.length > 0 ? documents : pet.documents,
-      appointments: pApts.length > 0 ? pApts : pet.appointments,
-      healthScore: latestScore,
-      health: latestScore > 85 ? "Healthy" : latestScore > 60 ? "Vaccination Due" : "Needs Checkup"
-    };
-
-    saveStoredPets(allPets);
-    setPets(allPets);
-  }, []);
-
-  // CRUD for Health Records
-  const addRecord = useCallback((recordData) => {
-    const newRecord = {
-      ...recordData,
-      id: `rec-${Date.now()}`,
-      petId: selectedPetId
-    };
-
-    setRecords((prev) => {
-      const updated = [newRecord, ...prev];
-      saveStoredHealthRecords(updated);
-      syncToPetProfile(selectedPetId, updated, appointments);
-      return updated;
-    });
-
-    publishEvent({
-      type: "VACCINATION_COMPLETED",
-      category: "health",
-      title: "Medical Record Logged",
-      description: `New visit record added: "${newRecord.diagnosis || "Routine Checkup"}" for your pet.`,
-      priority: "medium",
-      action: "/health"
-    });
-  }, [selectedPetId, appointments, syncToPetProfile]);
-
-  const updateRecord = useCallback((id, updatedFields) => {
-    setRecords((prev) => {
-      const updated = prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r));
-      saveStoredHealthRecords(updated);
-      syncToPetProfile(selectedPetId, updated, appointments);
-      return updated;
-    });
-  }, [selectedPetId, appointments, syncToPetProfile]);
-
-  const deleteRecord = useCallback((id) => {
-    setRecords((prev) => {
-      const updated = prev.filter((r) => r.id !== id);
-      saveStoredHealthRecords(updated);
-      syncToPetProfile(selectedPetId, updated, appointments);
-      return updated;
-    });
-  }, [selectedPetId, appointments, syncToPetProfile]);
-
-  // CRUD for Appointments
-  const addAppointment = useCallback((aptData) => {
-    const newApt = {
-      ...aptData,
-      id: `apt-${Date.now()}`,
-      petId: selectedPetId,
-      status: "Upcoming"
-    };
-
-    setAppointments((prev) => {
-      const updated = [newApt, ...prev];
-      saveStoredAppointments(updated);
-      syncToPetProfile(selectedPetId, records, updated);
-      return updated;
-    });
-
-    publishEvent({
-      type: "APPOINTMENT_SCHEDULED",
-      category: "health",
-      title: "Appointment Scheduled",
-      description: `New appointment scheduled: "${newApt.reason}" on ${newApt.visitDate} at ${newApt.time}.`,
-      priority: "medium",
-      action: "/health/appointments"
-    });
-  }, [selectedPetId, records, syncToPetProfile]);
-
-  const updateAppointment = useCallback((id, updatedFields) => {
-    setAppointments((prev) => {
-      const updated = prev.map((a) => (a.id === id ? { ...a, ...updatedFields } : a));
-      saveStoredAppointments(updated);
-      syncToPetProfile(selectedPetId, records, updated);
-      return updated;
-    });
-  }, [selectedPetId, records, syncToPetProfile]);
-
-  const deleteAppointment = useCallback((id) => {
-    setAppointments((prev) => {
-      const updated = prev.filter((a) => a.id !== id);
-      saveStoredAppointments(updated);
-      syncToPetProfile(selectedPetId, records, updated);
-      return updated;
-    });
-  }, [selectedPetId, records, syncToPetProfile]);
-
-  // Emergency Contact management
-  const addEmergencyContact = useCallback((contactData) => {
-    const newContact = {
-      ...contactData,
-      id: `contact-${Date.now()}`
-    };
-    setEmergencyContacts((prev) => {
-      const updated = [...prev, newContact];
-      saveStoredEmergencyContacts(updated);
-      return updated;
-    });
-  }, []);
-
-  const deleteEmergencyContact = useCallback((id) => {
-    setEmergencyContacts((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      saveStoredEmergencyContacts(updated);
-      return updated;
-    });
-  }, []);
+  }, [records]);
 
   return {
     pets,
     selectedPetId,
     selectedPet,
     changeSelectedPet,
-    records: petRecords,
-    allRecords: records,
-    appointments: petAppointments,
-    allAppointments: appointments,
-    emergencyContacts,
+    records: medicalHistory,
+    appointments,
+    vaccinations,
+    healthScore,
+    weightHistory,
+    latestWeight,
     addRecord,
-    updateRecord,
-    deleteRecord,
+    addVaccination,
     addAppointment,
     updateAppointment,
     deleteAppointment,
-    addEmergencyContact,
-    deleteEmergencyContact
+    searchClinics,
+    loading
   };
 }

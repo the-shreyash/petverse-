@@ -9,9 +9,11 @@ import PetStoryCard from "@/components/community/cards/PetStoryCard";
 import PostCard from "@/components/community/cards/PostCard";
 import CreatePostModal from "@/components/community/shared/CreatePostModal";
 import { useCommunity } from "@/hooks/useCommunity";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function FeedPage() {
-  const { posts, stories, addPost, likePost, bookmarkPost, addStory } = useCommunity();
+  const { posts, stories, addPost, likePost, bookmarkPost, deletePost, addStory } = useCommunity();
+  const { user } = useAuth();
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedStory, setSelectedStory] = useState(null);
   const [storyIndex, setStoryIndex] = useState(0);
@@ -40,10 +42,26 @@ export default function FeedPage() {
     }
   };
 
-  const filteredPosts = posts.filter((p) =>
-    p.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.author.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPosts = posts.filter((p) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (p.content || "").toLowerCase().includes(q) ||
+      (p.author?.name || "").toLowerCase().includes(q)
+    );
+  });
+
+  const handleShare = async (postId) => {
+    const url = `${window.location.origin}/community/post/${postId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "PetVerse post", url });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch {
+      /* user dismissed share sheet — non-fatal */
+    }
+  };
 
   return (
     <DashboardLayout pageTitle="Community" pageDescription="Connect with fellow pet lovers, view stories, and share tips.">
@@ -150,8 +168,11 @@ export default function FeedPage() {
                 <PostCard
                   key={post.id}
                   post={post}
+                  currentUserId={user?.id}
                   onLike={likePost}
                   onBookmark={bookmarkPost}
+                  onShare={handleShare}
+                  onDelete={deletePost}
                 />
               ))
             ) : (

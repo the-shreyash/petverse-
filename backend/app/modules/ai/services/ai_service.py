@@ -83,6 +83,22 @@ class AIService:
         # Generate response
         try:
             ai_resp = await provider.generate_chat_response(system_prompt, history_msgs)
+        except ValueError as e:
+            # Provider not configured (missing API key). Degrade gracefully with a
+            # clear assistant message so the chat UI always responds instead of
+            # hanging or surfacing a raw error.
+            from app.modules.ai.providers.base import AIProviderResponse
+            ai_resp = AIProviderResponse(
+                message=(
+                    "The AI assistant is not fully configured yet. Add an "
+                    "OPENAI_API_KEY or GEMINI_API_KEY to the backend environment "
+                    "to enable live responses."
+                ),
+                model_name="unconfigured",
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+            )
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"AI Provider error: {str(e)}")
             

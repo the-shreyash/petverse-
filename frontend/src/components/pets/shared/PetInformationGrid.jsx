@@ -62,7 +62,7 @@ export default function PetInformationGrid({ pet }) {
     {
       icon: User,
       label: "Owner",
-      value: pet.owner || "Shreyash Sharma",
+      value: pet.owner || "You",
       color: "text-teal-500 bg-teal-50",
     },
   ];

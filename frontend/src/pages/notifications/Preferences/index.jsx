@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Bell, Settings, CalendarRange, CheckCircle } from "lucide-react";
+import { Bell, Settings, CalendarRange, CheckCircle, Smartphone, Mail, ShieldAlert, HeartPulse, ShoppingBag, Users, CalendarClock, Save, Bot } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/layout";
 import GlassCard from "@/components/ui/GlassCard/GlassCard";
 import PreferenceCard from "@/components/notifications/cards/PreferenceCard";
-import { getStoredPreferences, saveStoredPreferences } from "@/mock/notifications";
+import { publishEvent } from "@/utils/events";
 
-export default function NotificationPreferencesPage() {
-  const [preferences, setPreferences] = useState({});
+export default function NotificationPreferences() {
+  const [preferences, setPreferences] = useState({
+    push: true,
+    email: true,
+    sms: false,
+    categories: {
+      health: true,
+      shop: true,
+      community: true,
+      ai: true
+    }
+  });
   const [savedFeedback, setSavedFeedback] = useState(false);
-
-  useEffect(() => {
-    setPreferences(getStoredPreferences());
-  }, []);
 
   const handlePreferenceChange = (channel, updatedPrefs) => {
     const nextPrefs = {
@@ -20,7 +26,6 @@ export default function NotificationPreferencesPage() {
       [channel]: updatedPrefs
     };
     setPreferences(nextPrefs);
-    saveStoredPreferences(nextPrefs);
 
     // Dynamic save toast feedback
     setSavedFeedback(true);

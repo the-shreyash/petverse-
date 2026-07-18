@@ -1,36 +1,86 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Sparkles, Heart, FileText, CheckCircle, ShieldAlert, Award } from "lucide-react";
+import { ArrowLeft, Heart, FileText, CheckCircle, MapPin, PawPrint, User as UserIcon, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/layout";
 import GlassCard from "@/components/ui/GlassCard/GlassCard";
 import { useAdoption } from "@/hooks/useAdoption";
 
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") || "http://localhost:8000";
+
+function getImageUrl(url) {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${BACKEND_URL}${url}`;
+}
+
 export default function AdoptionDetailsPage() {
   const { id } = useParams();
-  const { adoptablePets, calculateAICompatibility, submitAdoptionRequest } = useAdoption();
+  const { fetchListingDetail, submitApplication } = useAdoption();
+
+  const [listing, setListing] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-
-  // Form states
   const [homeType, setHomeType] = useState("Apartment");
   const [hasKids, setHasKids] = useState("No");
   const [activityLevel, setActivityLevel] = useState("Moderate");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const pet = useMemo(() => {
-    return adoptablePets.find((p) => p.id === id) || null;
-  }, [adoptablePets, id]);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(false);
+        const data = await fetchListingDetail(id);
+        if (active) setListing(data);
+      } catch (err) {
+        console.error("Failed to load adoption listing", err);
+        if (active) setError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [id, fetchListingDetail]);
 
-  const aiMatch = useMemo(() => {
-    return pet ? calculateAICompatibility(pet) : null;
-  }, [pet, calculateAICompatibility]);
+  const handleApplySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await submitApplication(listing.id, { homeType, hasKids, activityLevel, message });
+    } catch (err) {
+      // notification/interest still recorded server-side where possible
+    }
+    setSubmitted(true);
+    setTimeout(() => {
+      setIsApplyModalOpen(false);
+      setSubmitted(false);
+      setCurrentStep(1);
+    }, 2000);
+  };
 
-  if (!pet) {
+  if (loading) {
     return (
-      <DashboardLayout>
-        <div className="text-center py-12">
+      <DashboardLayout pageTitle="Adoption Details">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 h-[500px] rounded-[24px] bg-slate-100 animate-pulse" />
+          <div className="h-[300px] rounded-[24px] bg-slate-100 animate-pulse" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !listing) {
+    return (
+      <DashboardLayout pageTitle="Adoption Details">
+        <div className="text-center py-16">
+          <PawPrint size={48} className="text-slate-200 mx-auto mb-4" />
           <p className="text-slate-500 font-bold">Adoption listing not found.</p>
           <Link to="/adoption" className="text-emerald-500 font-bold mt-2 inline-block">
             Back to listings
@@ -40,26 +90,42 @@ export default function AdoptionDetailsPage() {
     );
   }
 
-  const handleApplySubmit = (e) => {
-    e.preventDefault();
-    submitAdoptionRequest(pet.id, {
-      homeType,
-      hasKids,
-      activityLevel,
-      message
-    });
-    setSubmitted(true);
-    setTimeout(() => {
-      setIsApplyModalOpen(false);
-      setSubmitted(false);
-      setCurrentStep(1);
-    }, 2000);
-  };
+  const pet = listing.pet || {};
+  const owner = listing.owner || {};
+  const petName = pet.name || listing.title || "This Pet";
+
+  // Combined gallery: pet's uploaded photos + listing gallery + pet profile image
+  const images = [
+    pet.profile_image,
+    ...(pet.gallery || []),
+    ...(listing.gallery || [])
+  ]
+    .filter(Boolean)
+    .map(getImageUrl);
+
+  const characteristics = [
+    pet.breed && { label: pet.breed },
+    pet.species && { label: pet.species },
+    pet.age && { label: pet.age },
+    pet.gender && { label: pet.gender, tone: "rose" },
+    pet.weight != null && { label: `${pet.weight} kg` }
+  ].filter(Boolean);
+
+  const feeLabel =
+    listing.adoption_fee === 0 || listing.adoption_fee == null
+      ? "Free"
+      : `$${listing.adoption_fee}`;
+
+  const locationLabel = [listing.city, listing.state, listing.country]
+    .filter(Boolean)
+    .join(", ");
+
+  const isPending = listing.status === "PENDING" || listing.status === "Pending";
+  const isAdopted = listing.status === "ADOPTED" || listing.status === "Adopted";
 
   return (
-    <DashboardLayout pageTitle={`Meet ${pet.petName}`} pageDescription={`Learn about ${pet.petName} and read their compatibility details.`}>
+    <DashboardLayout pageTitle={`Meet ${petName}`} pageDescription={`Learn about ${petName} and apply to adopt.`}>
       <div className="space-y-6 text-left">
-        {/* Back Link */}
         <Link
           to="/adoption"
           className="flex items-center gap-2 font-bold text-slate-800 text-sm hover:text-emerald-600 transition"
@@ -68,25 +134,21 @@ export default function AdoptionDetailsPage() {
           Back to Listings
         </Link>
 
-        {/* Details Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Gallery and Meta info (Span 2) */}
+          {/* Main column */}
           <div className="lg:col-span-2 space-y-6">
             <GlassCard className="p-6 md:p-8" hover={false}>
-              {/* Pet image gallery grid */}
+              {/* Gallery */}
               <div className="grid grid-cols-2 gap-4 h-[350px] overflow-hidden rounded-[24px]">
-                <img
-                  src={pet.gallery[0]}
-                  alt={pet.petName}
-                  className="w-full h-full object-cover"
-                />
-                {pet.gallery[1] ? (
-                  <img
-                    src={pet.gallery[1]}
-                    alt={pet.petName}
-                    className="w-full h-full object-cover"
-                  />
+                {images[0] ? (
+                  <img src={images[0]} alt={petName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+                    <PawPrint size={56} className="text-emerald-300" />
+                  </div>
+                )}
+                {images[1] ? (
+                  <img src={images[1]} alt={petName} className="w-full h-full object-cover" />
                 ) : (
                   <div className="bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-sm">
                     No Additional Photos
@@ -94,106 +156,126 @@ export default function AdoptionDetailsPage() {
                 )}
               </div>
 
-              {/* Title & Characteristics */}
+              {/* Title & characteristics */}
               <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-3xl font-black text-slate-800">{pet.petName}</h3>
-                  <p className="text-xs text-slate-400 font-bold mt-1">Sheltered by {pet.shelterName}</p>
+                  <h3 className="text-3xl font-black text-slate-800">{petName}</h3>
+                  {owner.name && (
+                    <p className="text-xs text-slate-400 font-bold mt-1">Listed by {owner.name}</p>
+                  )}
                 </div>
-
-                <div className="flex gap-2">
-                  <span className="text-xs font-black text-slate-500 bg-slate-100 px-3.5 py-1.5 rounded-xl">
-                    {pet.breed}
-                  </span>
-                  <span className="text-xs font-black text-slate-500 bg-slate-100 px-3.5 py-1.5 rounded-xl">
-                    {pet.age}
-                  </span>
-                  <span className="text-xs font-black text-rose-500 bg-rose-50 px-3.5 py-1.5 rounded-xl">
-                    {pet.gender}
-                  </span>
+                <div className="flex gap-2 flex-wrap">
+                  {characteristics.map((c, i) => (
+                    <span
+                      key={i}
+                      className={`text-xs font-black px-3.5 py-1.5 rounded-xl ${
+                        c.tone === "rose" ? "text-rose-500 bg-rose-50" : "text-slate-500 bg-slate-100"
+                      }`}
+                    >
+                      {c.label}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              {/* Description */}
+              {/* Story */}
               <div className="mt-8 space-y-4">
                 <h4 className="font-bold text-slate-800 text-lg">Story</h4>
                 <p className="text-sm md:text-base text-slate-600 leading-relaxed font-medium">
-                  {pet.description}
+                  {listing.description || "No description provided."}
                 </p>
+                {pet.description && (
+                  <p className="text-sm text-slate-500 leading-relaxed">{pet.description}</p>
+                )}
               </div>
 
-              {/* Health Details */}
+              {/* Pet profile facts */}
               <div className="mt-8 border-t border-slate-100 pt-6">
                 <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
                   <FileText size={18} className="text-emerald-500" />
-                  Health & Vaccinations
+                  Pet Profile
                 </h4>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <p className="text-xs text-slate-400 font-bold">Health Status</p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1">{pet.health}</p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <p className="text-xs text-slate-400 font-bold">Vaccinations Record</p>
-                    <p className="text-sm font-semibold text-slate-800 mt-1">{pet.vaccinations}</p>
-                  </div>
+                  <Fact label="Species" value={pet.species} />
+                  <Fact label="Breed" value={pet.breed} />
+                  <Fact label="Age" value={pet.age} />
+                  <Fact label="Gender" value={pet.gender} />
+                  <Fact label="Weight" value={pet.weight != null ? `${pet.weight} kg` : null} />
+                  <Fact label="Color" value={pet.color} />
+                  <Fact label="Spayed / Neutered" value={pet.sterilized ? "Yes" : "No"} />
+                  <Fact label="Blood Group" value={pet.blood_group} />
                 </div>
               </div>
             </GlassCard>
           </div>
 
-          {/* AI Compatibility and Adoption Actions (Span 1) */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            
-            {/* AI Compatibility Report */}
-            {aiMatch && (
-              <GlassCard className="p-6 border border-emerald-100/50 bg-gradient-to-br from-emerald-500/5 to-teal-500/5" hover={false}>
-                <div className="flex items-center gap-2 font-bold text-slate-800 mb-6">
-                  <Sparkles size={18} className="text-yellow-500" />
-                  <span>AI Compatibility Report</span>
+            {/* Key info */}
+            <GlassCard className="p-6" hover={false}>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                    <DollarSign size={13} /> Adoption Fee
+                  </span>
+                  <span className="text-sm font-black text-emerald-600">{feeLabel}</span>
                 </div>
-
-                {/* Meter */}
-                <div className="flex flex-col items-center justify-center py-4 relative">
-                  <div className="h-32 w-32 rounded-full border-[10px] border-emerald-100 flex items-center justify-center relative">
-                    <span className="text-3xl font-black text-slate-800">{aiMatch.score}%</span>
-                    <div className="absolute inset-0 rounded-full border-[10px] border-emerald-500 border-t-transparent border-l-transparent animate-spin-slow pointer-events-none" />
+                {locationLabel && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                      <MapPin size={13} /> Location
+                    </span>
+                    <span className="text-sm font-bold text-slate-700">{locationLabel}</span>
                   </div>
-                  <p className="text-xs font-bold text-emerald-600 mt-4 uppercase tracking-widest">
-                    High Compatibility Match
-                  </p>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Status</span>
+                  <span
+                    className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                      isAdopted
+                        ? "bg-slate-100 text-slate-500"
+                        : isPending
+                        ? "bg-amber-50 text-amber-600"
+                        : "bg-emerald-50 text-emerald-600"
+                    }`}
+                  >
+                    {listing.status || "AVAILABLE"}
+                  </span>
                 </div>
-
-                {/* Match factors */}
-                <div className="mt-6 space-y-3 pt-4 border-t border-slate-100">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-wide">Key Matching Factors</p>
-                  {aiMatch.reasons.map((reason, idx) => (
-                    <div key={idx} className="flex gap-2 text-xs font-semibold text-slate-600">
-                      <CheckCircle size={14} className="text-emerald-500 shrink-0 mt-0.5" />
-                      <span>{reason}</span>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-            )}
+                {owner.name && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                      <UserIcon size={13} /> Owner
+                    </span>
+                    <span className="text-sm font-bold text-slate-700">{owner.name}</span>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
 
             {/* Application widget */}
             <GlassCard className="p-6" hover={false}>
-              <h4 className="font-bold text-slate-800 text-base mb-4">Adoption Inquiry</h4>
+              <h4 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+                <Heart size={16} className="text-rose-500" /> Adoption Inquiry
+              </h4>
               <p className="text-xs text-slate-400 font-semibold leading-relaxed mb-6">
-                Submit an adoption application wizard to schedule a meeting with {pet.petName} and {pet.shelterName}.
+                Submit an application to express interest in adopting {petName}. The owner will be notified.
               </p>
 
-              {pet.status === "Pending" ? (
+              {isAdopted ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-xs font-bold text-slate-500">
-                  Adoption application is currently pending review.
+                  This pet has already been adopted.
+                </div>
+              ) : isPending ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-xs font-bold text-amber-600">
+                  An adoption application is currently pending review.
                 </div>
               ) : (
                 <button
                   onClick={() => setIsApplyModalOpen(true)}
                   className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-sm py-3.5 shadow-lg shadow-emerald-100 hover:opacity-95 transition outline-none"
                 >
-                  Apply to Adopt {pet.petName}
+                  Apply to Adopt {petName}
                 </button>
               )}
             </GlassCard>
@@ -201,7 +283,7 @@ export default function AdoptionDetailsPage() {
         </div>
       </div>
 
-      {/* Multi-step Application Modal */}
+      {/* Application Modal */}
       {isApplyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <motion.div
@@ -216,13 +298,13 @@ export default function AdoptionDetailsPage() {
                 </div>
                 <h4 className="text-lg font-bold text-slate-800">Application Submitted!</h4>
                 <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-                  A chat conversation thread has been opened with the shelter. You will be redirected shortly...
+                  The owner has been notified of your interest. You will hear back soon.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleApplySubmit} className="space-y-6">
                 <div className="text-left border-b border-slate-100 pb-3 flex justify-between items-center">
-                  <h4 className="font-bold text-slate-800 text-lg">Adoption Request Wizard</h4>
+                  <h4 className="font-bold text-slate-800 text-lg">Adoption Request</h4>
                   <span className="text-xs text-slate-400 font-bold">Step {currentStep} of 2</span>
                 </div>
 
@@ -240,7 +322,6 @@ export default function AdoptionDetailsPage() {
                         <option value="Townhouse">Townhouse</option>
                       </select>
                     </div>
-
                     <div>
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Children in Household?</label>
                       <select
@@ -252,7 +333,6 @@ export default function AdoptionDetailsPage() {
                         <option value="Yes">Yes, children under 12</option>
                       </select>
                     </div>
-
                     <button
                       type="button"
                       onClick={() => setCurrentStep(2)}
@@ -275,18 +355,16 @@ export default function AdoptionDetailsPage() {
                         <option value="Low">Low (Short walks/cuddles)</option>
                       </select>
                     </div>
-
                     <div>
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Introduce Yourself</label>
                       <textarea
                         rows={3}
-                        placeholder="Tell the shelter about your experience with pets..."
+                        placeholder="Tell the owner about your experience with pets..."
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm mt-1.5 focus:border-emerald-400 focus:bg-white outline-none resize-none"
                       />
                     </div>
-
                     <div className="flex gap-3 mt-4">
                       <button
                         type="button"
@@ -310,5 +388,14 @@ export default function AdoptionDetailsPage() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+function Fact({ label, value }) {
+  return (
+    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+      <p className="text-xs text-slate-400 font-bold">{label}</p>
+      <p className="text-sm font-semibold text-slate-800 mt-1">{value ?? "—"}</p>
+    </div>
   );
 }

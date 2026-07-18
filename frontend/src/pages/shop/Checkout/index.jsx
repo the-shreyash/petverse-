@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { productImage } from "@/utils/shopImage";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, Check, CreditCard, ShieldCheck, Truck, ShoppingBag, Calendar } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -334,7 +335,7 @@ export default function CheckoutView() {
                   {cart.map((item, i) => (
                     <div key={i} className="flex gap-2 text-xs">
                       <img
-                        src={item.product.images?.[0]}
+                        src={productImage(item.product)}
                         alt=""
                         className="h-10 w-10 rounded-lg object-cover border border-slate-100"
                       />

@@ -57,6 +57,17 @@ class CartService:
         await self.cart_item_repo.delete(item_to_remove, hard=True)
         return await self.get_or_create_cart(user_id)
         
+    async def update_item_quantity(self, user_id: str, item_id: str, quantity: int) -> Cart:
+        cart = await self.get_or_create_cart(user_id)
+        item = next((i for i in cart.items if i.id == item_id), None)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found in cart")
+        if quantity < 1:
+            return await self.remove_item(user_id, item_id)
+        item.quantity = quantity
+        await self.cart_item_repo.save(item)
+        return await self.get_or_create_cart(user_id)
+
     async def clear_cart(self, user_id: str) -> None:
         cart = await self.get_or_create_cart(user_id)
         for item in list(cart.items):

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { aiResponseTemplates } from "@/mock/ai";
+import api from "@/services/api";
 
 export function useChat(activeConversation, onUpdateMessages) {
   const [messages, setMessages] = useState([]);
@@ -14,33 +14,24 @@ export function useChat(activeConversation, onUpdateMessages) {
     }
   }, [activeConversation]);
 
-  const triggerBotResponse = useCallback((userText, pet, healthContext) => {
+  const triggerBotResponse = useCallback(async (userText, pet, healthContext) => {
     setIsTyping(true);
-
-    setTimeout(() => {
-      let responseText = "";
-      const text = userText.toLowerCase();
-      const petName = pet?.name || "your pet";
-
-      if (text.includes("health") || text.includes("summary")) {
-        responseText = aiResponseTemplates.healthSummary(pet, healthContext?.latestRecord);
-      } else if (text.includes("vaccin") || text.includes("vax") || text.includes("shot")) {
-        responseText = aiResponseTemplates.vaccinationStatus(pet, healthContext?.vaccinations || []);
-      } else if (text.includes("diet") || text.includes("nutrit") || text.includes("feed") || text.includes("eat")) {
-        responseText = aiResponseTemplates.nutritionAdvice(pet, healthContext?.nutritionInfo);
-      } else if (text.includes("weight") || text.includes("grow")) {
-        responseText = aiResponseTemplates.weightAnalysis(pet, healthContext?.weightHistory || []);
-      } else {
-        responseText = aiResponseTemplates.generic(userText, petName);
-      }
-
+    
+    try {
+      const response = await api.post("/ai/chat", {
+        message: userText,
+        pet_id: pet?.id,
+        conversation_id: activeConversation?.id,
+        provider: "gemini"
+      });
+      
       const botMessage = {
         id: `msg-bot-${Date.now()}`,
         role: "assistant",
-        text: responseText,
+        text: response.data.message,
         timestamp: new Date().toISOString()
       };
-
+      
       setMessages(prev => {
         const next = [...prev, botMessage];
         if (activeConversation && onUpdateMessages) {
@@ -48,9 +39,20 @@ export function useChat(activeConversation, onUpdateMessages) {
         }
         return next;
       });
-
+    } catch (err) {
+      console.error("AI chat failed", err);
+      
+      const errorMessage = {
+        id: `msg-bot-err-${Date.now()}`,
+        role: "assistant",
+        text: "I'm having trouble connecting right now. Please try again later.",
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   }, [activeConversation, onUpdateMessages]);
 
   const sendMessage = useCallback((text, pet, healthContext) => {

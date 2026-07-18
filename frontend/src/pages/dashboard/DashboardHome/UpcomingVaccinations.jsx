@@ -1,7 +1,7 @@
 import { CalendarDays, Syringe, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { vaccinations } from "@/mock/dashboard";
+import { useHealth } from "@/hooks/useHealth";
 
 const statusStyles = {
   upcoming: "bg-amber-100 text-amber-700",
@@ -11,6 +11,33 @@ const statusStyles = {
 };
 
 const UpcomingVaccinations = () => {
+  const { vaccinations, selectedPet } = useHealth();
+
+  const getDaysLeft = (dueDate) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const mappedVaccinations = vaccinations.map(v => {
+    const due = v.next_due_date || v.dateDue || null;
+    const daysLeft = due ? getDaysLeft(due) : 0;
+    let status = "scheduled";
+    if (due && daysLeft < 0) status = "overdue";
+    else if (due && daysLeft < 30) status = "upcoming";
+    else status = "completed";
+
+    return {
+      id: v.id,
+      vaccine: v.name || v.vaccine_name,
+      petName: selectedPet?.name || "Unknown Pet",
+      dueDate: due || "Not set",
+      daysLeft,
+      status
+    };
+  });
+
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
 
@@ -39,86 +66,77 @@ const UpcomingVaccinations = () => {
 
       <div className="space-y-5">
 
-        {vaccinations.map((item) => (
+        {mappedVaccinations.length > 0 ? (
+          mappedVaccinations.map((item) => (
 
-          <motion.div
-            key={item.id}
-            whileHover={{ x: 4 }}
-            className="flex items-center justify-between rounded-2xl border border-slate-100 p-5 transition-all hover:border-emerald-200"
-          >
+            <motion.div
+              key={item.id}
+              whileHover={{ x: 4 }}
+              className="flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl border border-slate-100 p-5 transition-all hover:border-emerald-200 gap-4"
+            >
 
-            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-5">
 
-              <div className="rounded-2xl bg-emerald-100 p-4">
-                <Syringe
-                  className="text-emerald-600"
-                  size={22}
-                />
+                <div className="rounded-2xl bg-emerald-100 p-4">
+                  <Syringe
+                    className="text-emerald-600"
+                    size={22}
+                  />
+                </div>
+
+                <div>
+
+                  <h3 className="font-semibold text-slate-900">
+                    {item.vaccine}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {item.petName}
+                  </p>
+
+                </div>
+
               </div>
 
-              <div>
+              <div className="hidden text-center md:block">
 
-                <h3 className="font-semibold text-slate-900">
-                  {item.vaccine}
-                </h3>
+                <p className="text-sm text-slate-500">
+                  Due Date
+                </p>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  {item.petName}
+                <p className="mt-1 font-semibold text-slate-900">
+                  {item.dueDate}
                 </p>
 
               </div>
 
-            </div>
+              <div className="hidden text-center lg:block">
 
-            <div className="hidden text-center md:block">
+                <p className="text-sm text-slate-500">
+                  Remaining
+                </p>
 
-              <p className="text-sm text-slate-500">
-                Due Date
-              </p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {item.daysLeft} days
+                </p>
 
-              <p className="mt-1 font-semibold text-slate-900">
-                {item.dueDate}
-              </p>
+              </div>
 
-            </div>
+              <span
+                className={`rounded-full px-4 py-2 text-sm font-medium self-start sm:self-auto ${statusStyles[item.status]}`}
+              >
+                {item.status}
+              </span>
 
-            <div className="hidden text-center lg:block">
+            </motion.div>
 
-              <p className="text-sm text-slate-500">
-                Remaining
-              </p>
-
-              <p className="mt-1 font-semibold text-slate-900">
-                {item.daysLeft} days
-              </p>
-
-            </div>
-
-            <span
-              className={`rounded-full px-4 py-2 text-sm font-medium ${statusStyles[item.status]}`}
-            >
-              {item.status}
-            </span>
-
-            <button
-              className="
-                rounded-xl
-                bg-gradient-to-r
-                from-emerald-500
-                to-cyan-500
-                px-5
-                py-2.5
-                text-white
-                transition
-                hover:shadow-lg
-              "
-            >
-              Book
-            </button>
-
-          </motion.div>
-
-        ))}
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-12">
+            <Syringe className="text-slate-300 mb-3" size={32} />
+            <p className="text-slate-500 font-medium">No upcoming vaccinations</p>
+          </div>
+        )}
 
       </div>
 

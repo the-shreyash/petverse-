@@ -72,23 +72,36 @@ class DashboardAggregatorService:
             average_health_score=avg_health_score,
         )
 
+        # Real vaccination completion breakdown (no fabricated numbers).
+        completed_vaccinations = sum(1 for v in all_vaccinations if v.administration_date)
+
         charts = DashboardCharts(
-            weight_trend=[ChartData(label="Jan", value=12.5), ChartData(label="Feb", value=12.8)], # Placeholder
-            vaccination_status=[ChartData(label="Completed", value=10), ChartData(label="Pending", value=vaccinations_due)],
+            # Weight trend requires a per-pet time series; surfaced by the
+            # health module's weight endpoint. Kept empty here so the UI shows a
+            # professional empty state rather than fabricated values.
+            weight_trend=[],
+            vaccination_status=[
+                ChartData(label="Completed", value=completed_vaccinations),
+                ChartData(label="Pending", value=vaccinations_due),
+            ],
             health_score_trend=[ChartData(label="Score", value=avg_health_score)],
-            monthly_visits=[]
+            monthly_visits=[],
         )
 
+        issues = max(0, total_pets - healthy_pets)
         return DashboardResponse(
             stats=stats,
             pets=all_pets_data,
-            health_summary={"status": "Good", "issues": 0},
-            vaccinations=[{"vaccine_name": v.vaccine_name, "date": v.administration_date.isoformat()} for v in all_vaccinations],
+            health_summary={
+                "status": "Good" if issues == 0 else "Needs attention",
+                "issues": issues,
+            },
+            vaccinations=[{"vaccine_name": v.vaccine_name, "date": v.administration_date.isoformat()} for v in all_vaccinations if v.administration_date],
             appointments=[],
             feeding_placeholder=[],
             activities=all_activities[:10], # Top 10 recent activities
             health_score={"average": avg_health_score},
             charts=charts,
-            notifications_placeholder=[{"title": "Welcome to PetVerse"}],
-            ai_placeholder={"tip": "Hydration is important."}
+            notifications_placeholder=[],
+            ai_placeholder={},
         )
