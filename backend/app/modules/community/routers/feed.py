@@ -21,4 +21,4 @@ async def get_feed(
     Get the community feed.
     """
     service = PostService(db)
-    return await service.get_feed(skip=skip, limit=limit)
+    return await service.get_feed(skip=skip, limit=limit, current_user_id=current_user.id)

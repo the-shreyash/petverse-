@@ -112,6 +112,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     GEMINI_API_KEY: Optional[str] = Field(default=None)
 
+    # ─── Google OAuth ──────────────────────────────────────────────────────────
+    GOOGLE_CLIENT_ID: Optional[str] = Field(default=None)
+    GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None)
+    GOOGLE_REDIRECT_URI: str = Field(default="http://localhost:8000/api/v1/auth/google/callback")
+
     # ─── Computed Properties ──────────────────────────────────────────────────
 
     @model_validator(mode="after")

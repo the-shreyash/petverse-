@@ -1,13 +1,13 @@
 import React, { useMemo } from "react";
 import DashboardLayout from "@/components/dashboard/layout";
 import { useAIContext } from "@/hooks/useAIContext";
-import { Sparkles, Star, Calendar, ShieldAlert, UtensilsCrossed, AlertTriangle } from "lucide-react";
+import { Sparkles, Calendar, ShieldAlert, UtensilsCrossed, AlertTriangle } from "lucide-react";
 import HealthHeader from "@/components/health/shared/HealthHeader";
 import StatisticCard from "@/components/health/shared/StatisticCard";
-import RecommendationCard from "@/components/ai/cards/RecommendationCard";
-import { nutritionData, breedKnowledge } from "@/mock/ai";
 
 export default function NutritionView() {
+  const nutritionData = [];
+  const breedKnowledge = [];
   const context = useAIContext();
   const { activePet, healthDomain, feeding } = context;
   const { pets, selectedPetId, changeSelectedPet } = healthDomain;

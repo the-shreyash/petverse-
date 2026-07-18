@@ -1,43 +1,39 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import DashboardLayout from "@/components/dashboard/layout";
 import DashboardHeader from "@/pages/dashboard/DashboardHome/DashboardHeader";
 import { Link } from "react-router-dom";
-import { Plus, Search, Filter, RefreshCw } from "lucide-react";
+import { Plus, Search, Filter, RefreshCw, PawPrint, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getStoredPets, saveStoredPets } from "@/mock/pets";
 import PetCard from "@/components/pets/cards/PetCard";
+import { usePets } from "@/hooks/usePets";
+import api from "@/services/api";
 
 export default function MyPets() {
-  const [pets, setPets] = useState([]);
+  const { pets, loading, refreshPets } = usePets();
   const [search, setSearch] = useState("");
   const [speciesFilter, setSpeciesFilter] = useState("All");
-  const [healthFilter, setHealthFilter] = useState("All");
+  const [deletingId, setDeletingId] = useState(null);
 
-  useEffect(() => {
-    setPets(getStoredPets());
-  }, []);
-
-  const handleDeletePet = (id) => {
-    const updated = pets.filter((p) => p.id !== id);
-    setPets(updated);
-    saveStoredPets(updated);
-  };
-
-  const getHealthStatus = (score) => {
-    if (score > 85) return "Healthy";
-    if (score > 60) return "Vaccination Due";
-    return "Needs Checkup";
+  const handleDeletePet = async (id) => {
+    if (!window.confirm("Are you sure you want to remove this pet?")) return;
+    try {
+      setDeletingId(id);
+      await api.delete(`/pets/${id}`);
+      await refreshPets();
+    } catch (err) {
+      console.error("Error deleting pet", err);
+      alert("Failed to delete pet. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const filteredPets = pets.filter((pet) => {
-    const matchesSearch = pet.name.toLowerCase().includes(search.toLowerCase()) || 
-                          pet.breed.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      (pet.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (pet.breed || "").toLowerCase().includes(search.toLowerCase());
     const matchesSpecies = speciesFilter === "All" || pet.species === speciesFilter;
-    
-    const healthStatus = getHealthStatus(pet.healthScore);
-    const matchesHealth = healthFilter === "All" || healthStatus === healthFilter;
-
-    return matchesSearch && matchesSpecies && matchesHealth;
+    return matchesSearch && matchesSpecies;
   });
 
   return (
@@ -54,27 +50,7 @@ export default function MyPets() {
 
           <Link
             to="/pets/add"
-            className="
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              rounded-2xl
-              bg-gradient-to-r
-              from-emerald-500
-              to-cyan-500
-              px-6
-              py-3.5
-              font-bold
-              text-white
-              shadow-lg
-              shadow-emerald-500/20
-              transition-all
-              hover:-translate-y-0.5
-              hover:shadow-xl
-              hover:shadow-emerald-500/30
-              shrink-0
-            "
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-6 py-3.5 font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 shrink-0"
           >
             <Plus size={18} />
             <span>Add Pet</span>
@@ -112,64 +88,83 @@ export default function MyPets() {
               <option value="Other">Other</option>
             </select>
           </div>
-
-          {/* Health Status Dropdown */}
-          <div className="flex items-center gap-2">
-            <select
-              value={healthFilter}
-              onChange={(e) => setHealthFilter(e.target.value)}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none bg-white font-medium text-slate-700 focus:border-emerald-500"
-            >
-              <option value="All">All Health Statuses</option>
-              <option value="Healthy">Healthy</option>
-              <option value="Vaccination Due">Vaccination Due</option>
-              <option value="Needs Checkup">Needs Checkup</option>
-            </select>
-          </div>
         </div>
 
         {/* Pets Grid */}
-        <AnimatePresence mode="popLayout">
-          {filteredPets.length > 0 ? (
-            <motion.div
-              layout
-              className="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
-            >
-              {filteredPets.map((pet) => (
-                <motion.div
-                  key={pet.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <PetCard pet={pet} />
-                </motion.div>
-              ))}
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="rounded-3xl border border-dashed border-slate-200 p-12 text-center bg-white/50"
-            >
-              <p className="text-slate-400 font-bold text-lg">No pets matched your filter parameters.</p>
-              <button
-                onClick={() => {
-                  setSearch("");
-                  setSpeciesFilter("All");
-                  setHealthFilter("All");
-                }}
-                className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700"
+        {loading ? (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-72 rounded-[24px] bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {filteredPets.length > 0 ? (
+              <motion.div
+                layout
+                className="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
               >
-                <RefreshCw size={14} />
-                <span>Reset Filters</span>
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                {filteredPets.map((pet) => (
+                  <motion.div
+                    key={pet.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative group"
+                  >
+                    <PetCard pet={pet} />
+                    {/* Delete overlay */}
+                    <button
+                      onClick={() => handleDeletePet(pet.id)}
+                      disabled={deletingId === pet.id}
+                      className="absolute top-3 right-3 z-10 rounded-full bg-white/90 p-2 shadow opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:bg-red-50 disabled:opacity-50"
+                      title="Remove pet"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : pets.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-3xl border border-dashed border-slate-200 p-16 text-center bg-white"
+              >
+                <PawPrint size={48} className="text-slate-200 mx-auto mb-4" />
+                <h3 className="font-bold text-slate-700 text-xl mb-2">No pets yet</h3>
+                <p className="text-slate-400 mb-6">Add your first pet to start tracking their health and care.</p>
+                <Link
+                  to="/pets/add"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg"
+                >
+                  <Plus size={16} />
+                  Add First Pet
+                </Link>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-3xl border border-dashed border-slate-200 p-12 text-center bg-white/50"
+              >
+                <p className="text-slate-400 font-bold text-lg">No pets matched your filter.</p>
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setSpeciesFilter("All");
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700"
+                >
+                  <RefreshCw size={14} />
+                  <span>Reset Filters</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </div>
     </DashboardLayout>
   );

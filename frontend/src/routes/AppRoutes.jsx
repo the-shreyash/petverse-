@@ -5,6 +5,7 @@ import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import VerifyOTP from "../pages/auth/VerifyOTP";
+import OAuthCallback from "../pages/auth/OAuthCallback";
 import DashboardHome from "../pages/dashboard/DashboardHome";
 import MyPets from "../pages/pets/MyPets/MyPets";
 import AddPet from "../pages/pets/AddPet/AddPet";
@@ -64,6 +65,7 @@ const AppRoutes = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify" element={<VerifyOTP />} />
+      <Route path="/auth/oauth-callback" element={<OAuthCallback />} />
       <Route path="/dashboard" element={<DashboardHome />} />
       
       {/* Pet Routes */}

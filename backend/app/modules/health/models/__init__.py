@@ -7,6 +7,8 @@ from app.modules.health.models.vaccination import Vaccination
 from app.modules.health.models.medication import Medication
 from app.modules.health.models.weight import WeightHistory
 from app.modules.health.models.document import HealthDocument
+from app.modules.health.models.appointment import Appointment
+from app.modules.health.models.clinic import Clinic
 
 __all__ = [
     "MedicalRecord",
@@ -14,4 +16,6 @@ __all__ = [
     "Medication",
     "WeightHistory",
     "HealthDocument",
+    "Appointment",
+    "Clinic",
 ]

@@ -7,7 +7,7 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     reason: "",
     visitDate: new Date(Date.now() + 86400000).toISOString().split("T")[0], // Default tomorrow
-    time: "10:00 AM",
+    time: "10:00",
     veterinarian: "Dr. Sarah Wilson",
     clinic: "Oakwood Veterinary Hospital",
     notes: ""
@@ -88,11 +88,10 @@ export default function AppointmentForm({ isOpen, onClose, onSubmit }) {
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Preferred Time Slot</label>
                 <input
                   required
-                  type="text"
+                  type="time"
                   name="time"
                   value={formData.time}
                   onChange={handleChange}
-                  placeholder="e.g. 10:30 AM"
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-emerald-500 transition"
                 />
               </div>

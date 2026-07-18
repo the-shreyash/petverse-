@@ -1,4 +1,5 @@
 import React from "react";
+import { productImage } from "@/utils/shopImage";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, Star, ShoppingBag, Sparkles } from "lucide-react";
@@ -64,7 +65,7 @@ export default function ProductCard({
       {/* Image Link */}
       <Link to={`/shop/product/${product.id}`} className="relative block pt-[80%] bg-slate-50 overflow-hidden">
         <img
-          src={product.images?.[0]}
+          src={productImage(product)}
           alt={product.name}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-102"
         />

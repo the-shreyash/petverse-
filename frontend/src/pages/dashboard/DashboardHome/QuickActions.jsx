@@ -9,7 +9,44 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { quickActions } from "@/mock/dashboard";
+
+const quickActions = [
+  {
+    id: "qa-1",
+    title: "Add New Pet",
+    description: "Enroll a new companion to PetVerse.",
+    icon: "paw",
+    path: "/pets/add",
+  },
+  {
+    id: "qa-2",
+    title: "Ask AI",
+    description: "Get personalized insights and advice.",
+    icon: "bot",
+    path: "/ai",
+  },
+  {
+    id: "qa-3",
+    title: "Book Vet",
+    description: "Schedule a clinic or video appointment.",
+    icon: "calendar",
+    path: "/health/appointments",
+  },
+  {
+    id: "qa-4",
+    title: "Shop Supplies",
+    description: "Explore the marketplace for your pet.",
+    icon: "shop",
+    path: "/shop",
+  },
+  {
+    id: "qa-5",
+    title: "Community",
+    description: "Connect with other pet parents.",
+    icon: "home",
+    path: "/community",
+  },
+];
 
 const icons = {
   paw: PawPrint,

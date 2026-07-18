@@ -246,8 +246,82 @@ class AuthService:
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         return await self.users.get_by_id(user_id)
 
+    # ─── Google OAuth ─────────────────────────────────────────────────────────
+
+    async def login_or_register_with_google(
+        self,
+        *,
+        google_id: str,
+        email: str,
+        first_name: str,
+        last_name: str,
+        profile_image: str,
+        email_verified: bool,
+    ) -> Tuple[User, TokenPair]:
+        """
+        Find or create a user by Google ID / email, then issue tokens.
+
+        Strategy:
+        1. Look up by email.
+        2. If found and provider is LOCAL → link the Google provider (user is merging accounts).
+        3. If not found → create a new account with provider=GOOGLE, no password.
+        4. Update last_login and profile image, then issue tokens.
+        """
+        from app.utils.uuid_helper import generate_uuid_hex
+
+        email = email.strip().lower()
+
+        # Try to find existing user by email
+        user = await self.users.get_by_email(email)
+
+        if user:
+            # Update OAuth provider tracking if they were local
+            if user.provider == AuthProvider.LOCAL:
+                user.provider = AuthProvider.GOOGLE
+            # Update profile image from Google if they don't have one
+            if not user.profile_image and profile_image:
+                user.profile_image = profile_image
+            # Auto-verify since Google already confirmed the email
+            if email_verified:
+                user.is_verified = True
+        else:
+            # Generate a username from given name + random suffix
+            base_username = (first_name + last_name).lower().replace(" ", "_")[:35]
+            if not base_username:
+                base_username = email.split("@")[0]
+            # Ensure uniqueness
+            candidate = base_username
+            suffix = 1
+            while await self.users.get_by_username(candidate):
+                candidate = f"{base_username}{suffix}"
+                suffix += 1
+
+            user = User(
+                first_name=first_name or email.split("@")[0],
+                last_name=last_name or "",
+                username=candidate,
+                email=email,
+                password_hash=None,  # No password for OAuth users
+                provider=AuthProvider.GOOGLE,
+                profile_image=profile_image or None,
+                is_active=True,
+                is_verified=email_verified,
+            )
+            self.session.add(user)
+            await self.session.flush()
+
+        from app.utils.datetime_helper import utcnow
+        user.last_login = utcnow()
+        tokens = await self.tokens.create_token_pair(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+
+        logger.info("Google OAuth login: user_id=%s email=%s", user.id, user.email)
+        return user, tokens
+
 
 # A valid bcrypt hash of a random string, computed once at import. Verifying
 # against it on the "unknown email" path equalises response time so timing does
 # not leak whether an account exists.
 _DUMMY_HASH = PasswordService.hash(generate_secure_token())
+

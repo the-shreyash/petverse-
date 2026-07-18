@@ -6,10 +6,17 @@ from app.dependencies.common import get_db
 from app.dependencies.auth import get_current_user
 from app.modules.user.models.user import User
 
-from app.modules.community.schemas.adoption import AdoptionListingCreate, AdoptionListingUpdate, AdoptionListingResponse
+from pydantic import BaseModel
+from typing import Optional
+
+from app.modules.community.schemas.adoption import AdoptionListingCreate, AdoptionListingUpdate, AdoptionListingResponse, AdoptionListingDetailResponse
 from app.modules.community.services.adoption_service import AdoptionService
 
 router = APIRouter(prefix="/adoption", tags=["Community - Adoption"])
+
+
+class AdoptionApplyRequest(BaseModel):
+    message: Optional[str] = None
 
 @router.post("", response_model=AdoptionListingResponse, status_code=status.HTTP_201_CREATED)
 async def create_listing(
@@ -30,14 +37,14 @@ async def get_listings(
     service = AdoptionService(db)
     return await service.get_all(skip=skip, limit=limit)
 
-@router.get("/{listing_id}", response_model=AdoptionListingResponse)
+@router.get("/{listing_id}", response_model=AdoptionListingDetailResponse)
 async def get_listing(
     listing_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     service = AdoptionService(db)
-    return await service.get_by_id(listing_id)
+    return await service.get_detail(listing_id)
 
 @router.put("/{listing_id}", response_model=AdoptionListingResponse)
 async def update_listing(
@@ -48,6 +55,17 @@ async def update_listing(
 ):
     service = AdoptionService(db)
     return await service.update_listing(current_user.id, listing_id, data)
+
+@router.post("/{listing_id}/apply")
+async def apply_to_listing(
+    listing_id: str,
+    data: AdoptionApplyRequest = AdoptionApplyRequest(),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    service = AdoptionService(db)
+    return await service.apply_to_listing(current_user.id, listing_id, data.message)
+
 
 @router.delete("/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_listing(

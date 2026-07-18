@@ -28,3 +28,5 @@ class Post(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
     likes: Mapped[list["Like"]] = relationship("Like", back_populates="post", cascade="all, delete-orphan")
     bookmarks: Mapped[list["Bookmark"]] = relationship("Bookmark", back_populates="post", cascade="all, delete-orphan")
+    
+    author = relationship("User", foreign_keys=[author_id])

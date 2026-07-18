@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Sparkles, Activity, ShieldCheck, Coffee, Image as ImageIcon } from "lucide-react";
+import { ChevronLeft, Save, Activity, ShieldCheck, Coffee, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/layout";
 import DashboardHeader from "@/pages/dashboard/DashboardHome/DashboardHeader";
-import { getStoredPets, saveStoredPets } from "@/mock/pets";
 import { usePetForm } from "@/hooks/usePetForm";
+import api from "@/services/api";
 
-// Form components imports
 import BasicInformationForm from "@/components/pets/forms/BasicInformationForm";
 import PhotoUploader from "@/components/pets/forms/PhotoUploader";
 import HealthInformationForm from "@/components/pets/forms/HealthInformationForm";
@@ -18,60 +17,88 @@ export default function EditPet() {
   const navigate = useNavigate();
   const [activeSubTab, setActiveSubTab] = useState("basic");
   const { formData, errors, updateFields, validateStep, setFormData } = usePetForm();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const list = getStoredPets();
-    const found = list.find((p) => p.id === id);
-    if (!found) {
-      navigate("/pets");
-    } else {
-      setFormData(found);
-    }
+    const fetchPet = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) { navigate("/login"); return; }
+
+      try {
+        setLoading(true);
+        const response = await api.get(`/pets/${id}`);
+        const petData = response.data?.data || response.data;
+
+        // Map backend fields → usePetForm field names
+        setFormData({
+          name: petData.name || "",
+          species: petData.species || "",
+          breed: petData.breed || "",
+          gender: petData.gender || "",
+          birthDate: petData.birth_date || "",
+          weight: petData.weight || "",
+          height: petData.height || "",
+          color: petData.color || "",
+          microchipNumber: petData.microchip_number || "",
+          sterilized: petData.sterilized || false,
+          bloodGroup: petData.blood_group || "",
+          description: petData.description || "",
+          profileImage: petData.profile_image || "",
+          feedingPreferences: petData.feeding_preferences || {}
+        });
+      } catch (err) {
+        console.error("Error fetching pet", err);
+        navigate("/pets");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPet();
   }, [id, navigate, setFormData]);
 
-  const handleSave = () => {
-    // Validate forms depending on sub-tab or run all validations
-    let isValid = true;
-    if (activeSubTab === "basic") {
-      isValid = validateStep(1);
-    } else if (activeSubTab === "photo") {
-      isValid = validateStep(2);
-    } else if (activeSubTab === "feeding") {
-      isValid = validateStep(4);
-    }
+  const handleSave = async () => {
+    try {
+      setSaving(true);
 
-    if (!isValid) return;
+      // Map usePetForm field names → backend field names
+      const payload = {
+        name: formData.name,
+        species: formData.species,
+        breed: formData.breed || null,
+        gender: formData.gender || null,
+        birth_date: formData.birthDate || null,
+        weight: formData.weight ? parseFloat(formData.weight) : null,
+        height: formData.height ? parseFloat(formData.height) : null,
+        color: formData.color || null,
+        microchip_number: formData.microchipNumber || null,
+        sterilized: formData.sterilized || false,
+        blood_group: formData.bloodGroup || null,
+        description: formData.description || null
+      };
 
-    const list = getStoredPets();
-    // Update weight history if weight changed
-    let weightHistory = formData.weightHistory || [];
-    const lastWeightEntry = weightHistory[weightHistory.length - 1];
-    if (!lastWeightEntry || parseFloat(lastWeightEntry.weight) !== parseFloat(formData.weight)) {
-      weightHistory = [
-        ...weightHistory,
-        { date: new Date().toISOString().split("T")[0], weight: parseFloat(formData.weight) }
-      ];
-    }
-
-    const updatedList = list.map((p) => {
-      if (p.id === id) {
-        return {
-          ...formData,
-          weightHistory
-        };
+      await api.put(`/pets/${id}`, payload);
+      navigate(`/pets/${id}`);
+    } catch (err) {
+      console.error("Error updating pet", err);
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === 'string') {
+        alert(`Update failed: ${detail}`);
+      } else if (Array.isArray(detail)) {
+        alert(`Update failed: ${detail.map(d => d.msg).join(', ')}`);
+      } else {
+        alert("Failed to update pet. Please check your inputs and try again.");
       }
-      return p;
-    });
-
-    saveStoredPets(updatedList);
-    navigate(`/pets/${id}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!formData.name) {
+  if (loading) {
     return (
-      <DashboardLayout pageTitle="Loading Profile Edit...">
+      <DashboardLayout pageTitle="Loading...">
         <div className="flex h-64 items-center justify-center">
-          <p className="text-slate-500 font-bold">Loading Pet Form...</p>
+          <div className="animate-spin h-8 w-8 rounded-full border-4 border-emerald-500 border-t-transparent" />
         </div>
       </DashboardLayout>
     );
@@ -86,7 +113,7 @@ export default function EditPet() {
 
   return (
     <DashboardLayout
-      pageTitle={`Edit ${formData.name}`}
+      pageTitle={`Edit ${formData.name || "Pet"}`}
       pageDescription="Modify pet profile settings."
     >
       <div className="max-w-4xl mx-auto space-y-8">
@@ -95,27 +122,12 @@ export default function EditPet() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(`/pets/${id}`)}
-              className="
-                flex
-                h-12
-                w-12
-                items-center
-                justify-center
-                rounded-2xl
-                border
-                border-slate-200
-                bg-white
-                text-slate-600
-                transition-all
-                hover:bg-slate-50
-                hover:text-slate-900
-                shadow-sm
-              "
+              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 shadow-sm"
             >
               <ChevronLeft size={20} />
             </button>
             <DashboardHeader
-              title={`Edit ${formData.name}`}
+              title={`Edit ${formData.name || "Pet"}`}
               subtitle="Keep your pet's configuration profile up to date."
             />
           </div>
@@ -123,40 +135,17 @@ export default function EditPet() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(`/pets/${id}`)}
-              className="
-                rounded-2xl
-                border
-                border-slate-200
-                bg-white
-                px-5
-                py-3
-                font-bold
-                text-slate-600
-                transition-all
-                hover:bg-slate-50
-              "
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-600 transition-all hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="
-                flex
-                items-center
-                gap-2
-                rounded-2xl
-                bg-slate-900
-                px-6
-                py-3
-                font-bold
-                text-white
-                transition-all
-                hover:bg-slate-800
-                shadow-sm
-              "
+              disabled={saving}
+              className="flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 font-bold text-white transition-all hover:bg-slate-800 shadow-sm disabled:opacity-60"
             >
               <Save size={16} />
-              <span>Save Changes</span>
+              <span>{saving ? "Saving..." : "Save Changes"}</span>
             </button>
           </div>
         </div>
@@ -170,23 +159,11 @@ export default function EditPet() {
               <button
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id)}
-                className={`
-                  flex
-                  items-center
-                  gap-2
-                  border-b-2
-                  px-5
-                  py-3
-                  text-sm
-                  font-bold
-                  transition-all
-                  shrink-0
-                  ${
-                    isActive
-                      ? "border-emerald-500 text-emerald-600 font-extrabold"
-                      : "border-transparent text-slate-500 hover:text-slate-700"
-                  }
-                `}
+                className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-bold transition-all shrink-0 ${
+                  isActive
+                    ? "border-emerald-500 text-emerald-600 font-extrabold"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
               >
                 <Icon size={16} />
                 <span>{tab.name}</span>

@@ -13,11 +13,14 @@ export default function AppointmentCard({
     visitDate,
     time,
     reason,
-    status = "Upcoming",
+    status = "Scheduled",
     veterinarian,
     clinic,
     notes
   } = appointment;
+
+  const isUpcoming = ["Upcoming", "Scheduled"].includes(status);
+  const clinicLabel = typeof clinic === "string" ? clinic : clinic?.name || "";
 
   const formattedDate = visitDate
     ? new Date(visitDate).toLocaleDateString("en-US", {
@@ -44,7 +47,7 @@ export default function AppointmentCard({
           </div>
           <div>
             <h4 className="text-base font-black text-slate-800 tracking-tight">{reason}</h4>
-            <p className="mt-0.5 text-xs text-slate-400 font-semibold">{clinic}</p>
+            <p className="mt-0.5 text-xs text-slate-400 font-semibold">{clinicLabel}</p>
           </div>
         </div>
 
@@ -59,7 +62,7 @@ export default function AppointmentCard({
         </div>
         <div className="flex items-center gap-2.5">
           <Clock size={16} className="text-cyan-500" />
-          <span className="text-sm font-bold text-slate-700">{time}</span>
+          <span className="text-sm font-bold text-slate-700">{time || "—"}</span>
         </div>
       </div>
 
@@ -79,7 +82,7 @@ export default function AppointmentCard({
       )}
 
       {/* Action Buttons */}
-      {status === "Upcoming" && (
+      {isUpcoming && (
         <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3.5">
           <button
             onClick={() => onCancel && onCancel(id)}

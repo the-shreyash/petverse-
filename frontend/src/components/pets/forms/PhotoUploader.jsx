@@ -7,56 +7,54 @@ export default function PhotoUploader({ formData, errors, updateFields }) {
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef(null);
 
-  // Preset Unsplash options for testing as virtual "uploads" or lets allow custom urls/inputs
-  const mockPresetImages = [
-    "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=500",
-    "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=500",
-    "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=500",
-    "https://images.unsplash.com/photo-1507146426996-ef05306b995a?w=500",
-    "https://images.unsplash.com/photo-1537151608828-ea2b117b62e4?w=500"
-  ];
 
   const handleDragOver = (e) => {
     e.preventDefault();
   };
 
-  const simulateUpload = (imageUrl) => {
+  const handleFile = (file) => {
+    if (!file) return;
     setUploading(true);
     setProgress(0);
+    
+    // Simulate progress while reading
     const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setUploading(false);
-          updateFields({
-            profileImage: imageUrl,
-            gallery: [...(formData.gallery || []), imageUrl]
-          });
-          return 100;
-        }
-        return prev + 25;
-      });
-    }, 200);
+      setProgress((prev) => Math.min(prev + 30, 90));
+    }, 100);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      clearInterval(interval);
+      setProgress(100);
+      setTimeout(() => {
+        setUploading(false);
+        updateFields({
+          profileImage: reader.result,
+          profileImageFile: file,
+          gallery: [...(formData.gallery || []), reader.result],
+          galleryFiles: [...(formData.galleryFiles || []), file]
+        });
+      }, 300);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    // Simulate uploading a random high quality animal photo
-    const randomImg = mockPresetImages[Math.floor(Math.random() * mockPresetImages.length)];
-    simulateUpload(randomImg);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
   };
 
-  const handleSelectFile = () => {
-    const randomImg = mockPresetImages[Math.floor(Math.random() * mockPresetImages.length)];
-    simulateUpload(randomImg);
+  const handleSelectFile = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
   };
 
-  const handlePresetSelect = (url) => {
-    simulateUpload(url);
-  };
 
   const removePhoto = () => {
-    updateFields({ profileImage: "" });
+    updateFields({ profileImage: "", profileImageFile: null });
   };
 
   return (
@@ -177,39 +175,6 @@ export default function PhotoUploader({ formData, errors, updateFields }) {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* Preset Curated Images */}
-      <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Or choose a preset profile image</p>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
-          {mockPresetImages.map((url, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => handlePresetSelect(url)}
-              className={`
-                relative
-                h-16
-                w-16
-                shrink-0
-                rounded-2xl
-                overflow-hidden
-                border-2
-                transition-all
-                hover:scale-105
-                ${formData.profileImage === url ? "border-emerald-500 shadow-md" : "border-transparent opacity-75 hover:opacity-100"}
-              `}
-            >
-              <img src={url} alt={`Preset ${i}`} className="h-full w-full object-cover" />
-              {formData.profileImage === url && (
-                <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center text-white">
-                  <Check size={16} strokeWidth={3} />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

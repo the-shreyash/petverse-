@@ -35,3 +35,31 @@ class AdoptionListingResponse(AdoptionListingBase):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdoptionPetInfo(BaseModel):
+    id: str
+    name: Optional[str] = None
+    species: Optional[str] = None
+    breed: Optional[str] = None
+    gender: Optional[str] = None
+    birth_date: Optional[str] = None
+    age: Optional[str] = None
+    weight: Optional[float] = None
+    color: Optional[str] = None
+    profile_image: Optional[str] = None
+    description: Optional[str] = None
+    sterilized: Optional[bool] = None
+    blood_group: Optional[str] = None
+    gallery: List[str] = []
+
+
+class AdoptionOwnerInfo(BaseModel):
+    id: str
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+
+
+class AdoptionListingDetailResponse(AdoptionListingResponse):
+    pet: Optional[AdoptionPetInfo] = None
+    owner: Optional[AdoptionOwnerInfo] = None

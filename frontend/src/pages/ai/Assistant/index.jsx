@@ -8,9 +8,18 @@ import ConversationSidebar from "@/components/ai/chat/ConversationSidebar";
 import MessageBubble from "@/components/ai/chat/MessageBubble";
 import ChatInput from "@/components/ai/chat/ChatInput";
 import SuggestedPrompt from "@/components/ai/chat/SuggestedPrompt";
-import { suggestedPrompts, breedKnowledge, nutritionData } from "@/mock/ai";
 
 export default function AssistantView() {
+  const suggestedPrompts = {
+    general: [
+      "Is chocolate safe for dogs?",
+      "How to train my cat?",
+      "Best diet for an old pet",
+      "Common signs of illness"
+    ]
+  };
+  const breedKnowledge = [];
+  const nutritionData = [];
   const context = useAIContext();
   const { activePet, health, weightHistory, medicalHistory, vaccinations } = context;
 

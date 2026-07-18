@@ -6,9 +6,9 @@ import HealthHeader from "@/components/health/shared/HealthHeader";
 import StatisticCard from "@/components/health/shared/StatisticCard";
 import AIInsightCard from "@/components/ai/cards/AIInsightCard";
 import RecommendationCard from "@/components/ai/cards/RecommendationCard";
-import { breedKnowledge } from "@/mock/ai";
 
 export default function BreedExpertView() {
+  const breedKnowledge = [];
   const context = useAIContext();
   const { activePet, healthDomain } = context;
   const { pets, selectedPetId, changeSelectedPet } = healthDomain;

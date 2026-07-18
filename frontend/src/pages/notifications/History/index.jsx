@@ -7,7 +7,7 @@ import GlassCard from "@/components/ui/GlassCard/GlassCard";
 import ReminderCard from "@/components/notifications/cards/ReminderCard";
 import EmptyNotification from "@/components/notifications/shared/EmptyNotification";
 import { useReminder } from "@/hooks/useReminder";
-import { getStoredPets } from "@/mock/pets";
+import { usePets } from "@/hooks/usePets";
 
 export default function ReminderHistoryPage() {
   const { reminders, addReminder, completeReminder, snoozeReminder, deleteReminder } = useReminder();
@@ -24,7 +24,8 @@ export default function ReminderHistoryPage() {
   const [petId, setPetId] = useState("");
   const [priority, setPriority] = useState("medium");
 
-  const petsList = getStoredPets();
+  const { pets } = usePets();
+  const petsList = pets || [];
 
   const filteredReminders = reminders.filter((rem) => {
     if (filter === "All") return true;

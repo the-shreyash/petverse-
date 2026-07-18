@@ -11,6 +11,21 @@ import {
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/notifications/shared/NotificationBell";
+import { useAuth } from "@/contexts/AuthContext";
+
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") || "http://localhost:8000";
+const resolveAvatar = (url) => {
+  if (!url) return null;
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  return `${BACKEND_URL}${url}`;
+};
+
+const ROLE_LABELS = {
+  USER: "Pet Parent",
+  ADMIN: "Administrator",
+  VETERINARIAN: "Veterinarian",
+  SHELTER: "Shelter"
+};
 
 const TopNavbar = ({
   onMenuClick,
@@ -18,8 +33,16 @@ const TopNavbar = ({
   pageDescription = "Welcome back! Here's what's happening today.",
 }) => {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const displayName =
+    user ? (`${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "User") : "…";
+  const roleLabel = ROLE_LABELS[user?.role] || "Pet Parent";
+  const avatarSrc =
+    resolveAvatar(user?.profile_image) ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.first_name || "User")}&background=10b981&color=fff`;
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -235,18 +258,18 @@ const TopNavbar = ({
             "
           >
             <img
-              src=""
+              src={avatarSrc}
               alt="Profile"
               className="h-11 w-11 rounded-xl object-cover"
             />
 
             <div className="hidden text-left lg:block">
               <p className="font-semibold text-slate-900">
-                Shreyash
+                {displayName}
               </p>
 
               <p className="text-sm text-slate-500">
-                Pet Parent
+                {roleLabel}
               </p>
             </div>
 

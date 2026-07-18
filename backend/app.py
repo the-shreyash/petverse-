@@ -9,6 +9,13 @@ app = Flask(__name__)
 CORS(app)
 
 app.config["SECRET_KEY"] = "petverse_secret_key_2026"
+
+from flask import g
+@app.teardown_appcontext
+def close_db(error):
+    if hasattr(g, 'db'):
+        g.db.close()
+
 def verify_token(token):
     try:
         decoded = jwt.decode(
@@ -122,21 +129,21 @@ def add_pet():
 
     query = """
     INSERT INTO pets 
-    (user_id, pet_name, pet_type, breed, gender, dob, weight, color, photo)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    (id, owner_id, name, species, breed, gender, birth_date, weight, color, profile_image, status, is_active, is_deleted, created_at, updated_at)
+    VALUES (UUID(), %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Healthy', 1, 0, NOW(), NOW())
     """
 
-    cursor.execute(query, (user_id, pet_name, pet_type, breed, gender, dob, weight, color, photo))
+    cursor.execute(query, (user_id, pet_name, pet_type, breed, gender, dob if dob else None, weight, color, photo))
     db.commit()
 
     return {"message": "Pet added successfully"}
 # ✅ View All Pets of a User
-@app.route("/view_pets/<int:user_id>", methods=["GET"])
+@app.route("/view_pets/<user_id>", methods=["GET"])
 def view_pets(user_id):
 
     cursor = db.cursor(dictionary=True)
 
-    query = "SELECT * FROM pets WHERE user_id = %s"
+    query = "SELECT * FROM pets WHERE owner_id = %s"
 
     cursor.execute(query, (user_id,))
 
@@ -145,32 +152,28 @@ def view_pets(user_id):
     pets = []
     for p in pets_db:
         pets.append({
-            "id": f"pet-{p['pet_id']}",
-            "name": p["pet_name"],
-            "species": p["pet_type"],
+            "id": f"pet-{p['id']}",
+            "name": p["name"],
+            "species": p["species"],
             "breed": p["breed"],
             "gender": p["gender"],
-            "birthDate": str(p["dob"]) if p["dob"] else "",
+            "birthDate": str(p["birth_date"]) if p["birth_date"] else "",
             "weight": float(p["weight"]) if p["weight"] else 0.0,
             "color": p["color"],
-            "microchip": "",
-            "profileImage": p["photo"],
-            "gallery": [p["photo"]] if p["photo"] else [],
+            "microchip": p["microchip_number"] or "",
+            "profileImage": p["profile_image"] or "",
+            "gallery": [p["profile_image"]] if p["profile_image"] else [],
             "medicalHistory": [],
             "vaccinations": [],
-            "feedingPreferences": {},
-            "documents": [],
-            "appointments": [],
-            "healthScore": 100,
-            "owner": "",
-            "weightHistory": []
+            "healthStatus": p["status"],
+            "owner": p["owner_id"]
         })
 
     return {
         "pets": pets
     }
 # ✅ UPDATE PET API
-@app.route("/update_pet/<int:pet_id>", methods=["PUT"])
+@app.route("/update_pet/<pet_id>", methods=["PUT"])
 def update_pet(pet_id):
     data = request.get_json()
 
@@ -187,15 +190,16 @@ def update_pet(pet_id):
 
     query = """
     UPDATE pets
-    SET pet_name = %s,
-        pet_type = %s,
+    SET name = %s,
+        species = %s,
         breed = %s,
         gender = %s,
-        dob = %s,
+        birth_date = %s,
         weight = %s,
         color = %s,
-        photo = %s
-    WHERE pet_id = %s
+        profile_image = %s,
+        updated_at = NOW()
+    WHERE id = %s
     """
 
     cursor.execute(query, (
@@ -203,7 +207,7 @@ def update_pet(pet_id):
         pet_type,
         breed,
         gender,
-        dob,
+        dob if dob else None,
         weight,
         color,
         photo,
@@ -214,12 +218,12 @@ def update_pet(pet_id):
 
     return {"message": "Pet updated successfully"}
 # ✅ DELETE PET API
-@app.route("/delete_pet/<int:pet_id>", methods=["DELETE"])
+@app.route("/delete_pet/<pet_id>", methods=["DELETE"])
 def delete_pet(pet_id):
 
     cursor = db.cursor()
 
-    query = "DELETE FROM pets WHERE pet_id = %s"
+    query = "DELETE FROM pets WHERE id = %s"
 
     cursor.execute(query, (pet_id,))
 
@@ -258,15 +262,15 @@ def book_appointment():
 
     return {"message": "Appointment Booked Successfully"}
 # ✅ VIEW APPOINTMENTS API
-@app.route("/view_appointments/<int:user_id>", methods=["GET"])
+@app.route("/view_appointments/<user_id>", methods=["GET"])
 def view_appointments(user_id):
 
     cursor = db.cursor(dictionary=True)
 
     query = """
-    SELECT a.*, p.pet_name 
+    SELECT a.*, p.name as pet_name 
     FROM appointments a
-    LEFT JOIN pets p ON a.pet_id = p.pet_id
+    LEFT JOIN pets p ON a.pet_id = p.id
     WHERE a.user_id = %s
     """
 
@@ -283,7 +287,7 @@ def view_appointments(user_id):
             "clinic": "PetVerse Clinic",
             "date": str(a["appointment_date"]) if a["appointment_date"] else "",
             "time": str(a["appointment_time"]) if a["appointment_time"] else "",
-            "status": "Scheduled",
+            "status": "Upcoming",
             "reason": a["reason"],
             "created_at": str(a.get("created_at", ""))
         })
@@ -379,14 +383,17 @@ def cancel_appointment(appointment_id):
 
     return {"message": "Appointment Cancelled Successfully"}
 # ✅ VIEW ORDERS API
-@app.route("/view_orders/<int:user_id>", methods=["GET"])
+@app.route("/view_orders/<user_id>", methods=["GET"])
 def view_orders(user_id):
 
     cursor = db.cursor(dictionary=True)
 
     query = """
-    SELECT * FROM orders
-    WHERE user_id = %s
+    SELECT o.*, p.product_name, p.image, p.price, p.description
+    FROM orders o
+    JOIN products p ON o.product_id = p.product_id
+    WHERE o.user_id = %s
+    ORDER BY o.order_date DESC
     """
 
     cursor.execute(query, (user_id,))
@@ -461,7 +468,7 @@ def add_to_cart():
 
     return {"message": "Product Added To Cart Successfully"}
 # ✅ VIEW CART API
-@app.route("/view_cart/<int:user_id>", methods=["GET"])
+@app.route("/view_cart/<user_id>", methods=["GET"])
 def view_cart(user_id):
 
     cursor = db.cursor(dictionary=True)
@@ -714,6 +721,160 @@ def profile():
         "message": "Token Verified Successfully",
         "user": user
     }
+# ✅ HEALTH & VACCINATIONS API
+@app.route("/view_health/<pet_id>", methods=["GET"])
+def view_health(pet_id):
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM health_records WHERE pet_id = %s ORDER BY created_at DESC", (pet_id,))
+    records = cursor.fetchall()
+    for r in records: r["created_at"] = str(r["created_at"])
+    
+    cursor.execute("SELECT * FROM vaccinations WHERE pet_id = %s ORDER BY date_administered DESC", (pet_id,))
+    vaccinations = cursor.fetchall()
+    for v in vaccinations:
+        v["date_administered"] = str(v["date_administered"])
+        if v["next_due"]: v["next_due"] = str(v["next_due"])
+        v["created_at"] = str(v["created_at"])
+        
+    return {"records": records, "vaccinations": vaccinations}
+
+@app.route("/add_health", methods=["POST"])
+def add_health():
+    data = request.get_json()
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO health_records (pet_id, record_type, notes) VALUES (%s, %s, %s)", 
+                   (data["pet_id"], data["record_type"], data["notes"]))
+    db.commit()
+    return {"message": "Health record added"}
+
+@app.route("/add_vaccination", methods=["POST"])
+def add_vaccination():
+    data = request.get_json()
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO vaccinations (pet_id, vaccine_name, date_administered, next_due) VALUES (%s, %s, %s, %s)", 
+                   (data["pet_id"], data["vaccine_name"], data["date_administered"], data.get("next_due")))
+    db.commit()
+    return {"message": "Vaccination added"}
+
+# ✅ WISHLIST API
+@app.route("/view_wishlist/<user_id>", methods=["GET"])
+def view_wishlist(user_id):
+    cursor = db.cursor(dictionary=True)
+    query = """
+    SELECT w.wishlist_id, p.* 
+    FROM wishlist w 
+    JOIN products p ON w.product_id = p.product_id 
+    WHERE w.user_id = %s
+    """
+    cursor.execute(query, (user_id,))
+    wishlist = cursor.fetchall()
+    for w in wishlist: w["created_at"] = str(w["created_at"])
+    return {"wishlist": wishlist}
+
+@app.route("/add_to_wishlist", methods=["POST"])
+def add_to_wishlist():
+    data = request.get_json()
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO wishlist (user_id, product_id) VALUES (%s, %s)", (data["user_id"], data["product_id"]))
+    db.commit()
+    return {"message": "Added to wishlist"}
+
+@app.route("/remove_wishlist/<int:wishlist_id>", methods=["DELETE"])
+def remove_wishlist(wishlist_id):
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM wishlist WHERE wishlist_id = %s", (wishlist_id,))
+    db.commit()
+    return {"message": "Removed from wishlist"}
+
+# ✅ COMMUNITY API
+@app.route("/view_posts", methods=["GET"])
+def view_posts():
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("""
+    SELECT p.*, u.first_name, u.last_name 
+    FROM community_posts p
+    JOIN users u ON p.user_id = u.id
+    ORDER BY p.created_at DESC
+    """)
+    posts = cursor.fetchall()
+    for p in posts: p["created_at"] = str(p["created_at"])
+    return {"posts": posts}
+
+@app.route("/add_post", methods=["POST"])
+def add_post():
+    data = request.get_json()
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO community_posts (user_id, content, image) VALUES (%s, %s, %s)", 
+                   (data["user_id"], data["content"], data.get("image")))
+    db.commit()
+    return {"message": "Post created"}
+
+# ✅ NOTIFICATIONS API
+@app.route("/view_notifications/<user_id>", methods=["GET"])
+def view_notifications(user_id):
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM notifications WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
+    notifications = cursor.fetchall()
+    for n in notifications: n["created_at"] = str(n["created_at"])
+    return {"notifications": notifications}
+
+@app.route("/add_notification", methods=["POST"])
+def add_notification():
+    data = request.get_json()
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO notifications (user_id, title, message) VALUES (%s, %s, %s)", 
+                   (data["user_id"], data["title"], data["message"]))
+    db.commit()
+    return {"message": "Notification added"}
+
+@app.route("/read_notification/<int:notification_id>", methods=["PUT"])
+def read_notification(notification_id):
+    cursor = db.cursor()
+    cursor.execute("UPDATE notifications SET is_read = 1 WHERE notification_id = %s", (notification_id,))
+    db.commit()
+    return {"message": "Notification read"}
+
+@app.route("/delete_notification/<int:notification_id>", methods=["DELETE"])
+def delete_notification(notification_id):
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM notifications WHERE notification_id = %s", (notification_id,))
+    db.commit()
+    return {"message": "Notification deleted"}
+
+# ✅ AI CONVERSATIONS API
+@app.route("/view_conversations/<user_id>", methods=["GET"])
+def view_conversations(user_id):
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM ai_conversations WHERE user_id = %s ORDER BY updated_at DESC", (user_id,))
+    conversations = cursor.fetchall()
+    for c in conversations:
+        c["created_at"] = str(c["created_at"])
+        c["updated_at"] = str(c["updated_at"])
+    return {"conversations": conversations}
+
+@app.route("/save_conversation", methods=["POST"])
+def save_conversation():
+    data = request.get_json()
+    user_id = data["user_id"]
+    messages_json = data["messages_json"]
+    cursor = db.cursor(dictionary=True)
+    
+    # Check if a conversation already exists
+    cursor.execute("SELECT conversation_id FROM ai_conversations WHERE user_id = %s LIMIT 1", (user_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor = db.cursor()
+        cursor.execute("UPDATE ai_conversations SET messages_json = %s WHERE conversation_id = %s", 
+                       (messages_json, existing["conversation_id"]))
+    else:
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO ai_conversations (user_id, messages_json) VALUES (%s, %s)", 
+                       (user_id, messages_json))
+    
+    db.commit()
+    return {"message": "Conversation saved"}
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
     

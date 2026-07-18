@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import DashboardLayout from "@/components/dashboard/layout";
 import { useHealth } from "@/hooks/useHealth";
-import { getStoredMedicalDocuments, saveStoredMedicalDocuments } from "@/mock/health";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderOpen,
@@ -39,7 +38,7 @@ const CATEGORIES = [
 export default function DocumentsView() {
   const { pets, selectedPet, selectedPetId, changeSelectedPet } = useHealth();
 
-  const [allDocs, setAllDocs] = useState(() => getStoredMedicalDocuments());
+  const [allDocs, setAllDocs] = useState([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("grid");
@@ -95,7 +94,6 @@ export default function DocumentsView() {
     };
     const updated = [newDoc, ...allDocs];
     setAllDocs(updated);
-    saveStoredMedicalDocuments(updated);
   };
 
   if (!selectedPet) {

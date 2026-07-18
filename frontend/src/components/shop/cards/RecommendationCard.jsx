@@ -1,4 +1,5 @@
 import React from "react";
+import { productImage } from "@/utils/shopImage";
 import { Link } from "react-router-dom";
 import { Sparkles, ArrowRight } from "lucide-react";
 import PriceTag from "../shared/PriceTag";
@@ -25,7 +26,7 @@ export default function ShopRecommendationCard({ product, reasoning = "", onAddT
         {/* Product details */}
         <div className="flex items-center gap-3">
           <img
-            src={product.images?.[0]}
+            src={productImage(product)}
             alt={product.name}
             className="h-12 w-12 rounded-xl object-cover border border-slate-100"
           />

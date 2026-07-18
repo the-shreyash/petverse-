@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, User } from "lucide-react";
+import { Mail, User, AtSign } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
 import AuthButton from "@/components/auth/AuthButton";
@@ -8,10 +8,14 @@ import AuthDivider from "@/components/auth/AuthDivider";
 import SocialLoginButton from "@/components/auth/SocialLoginButton";
 import RememberMe from "@/components/auth/RememberMe";
 import { authTheme } from "@/styles/authTheme";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
+  const { register } = useAuth();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,53 +25,54 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
     setError("");
-  
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-  
+
     if (!agreeTerms) {
       setError("Please accept Terms and Privacy Policy");
       return;
     }
-  
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+
     try {
       setIsLoading(true);
-  
-      const response = await fetch("http://127.0.0.1:5001/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          full_name: name,
-          email: email,
-          password: password,
-        }),
+      await register({
+        first_name: firstName,
+        last_name: lastName,
+        username: username || email.split('@')[0].toLowerCase().replace(/[^a-z0-9._-]/g, '_'),
+        email,
+        password,
       });
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-        alert("Signup Successful!");
-        navigate("/login");
+      navigate("/dashboard");
+    } catch (err) {
+      const detail = err?.response?.data?.detail
+        || err?.response?.data?.message
+        || err?.response?.data?.error;
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        setError(detail.map(d => d.msg || d.message || JSON.stringify(d)).join(' | '));
       } else {
-        if (data.details && data.details.length > 0) {
-          setError(data.details.map(d => `${d.field.split(' → ').pop()}: ${d.message}`).join(" | "));
-        } else {
-          setError(data.message || "Signup failed");
-        }
+        setError("Registration failed. Please try again.");
       }
-  
-    } catch (error) {
-      setError("Backend server not connected");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleGoogleLogin = () => {
+    const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    window.location.href = `${backendUrl}/auth/google/login`;
+  };
+
   const termsLabel = (
     <span className="text-xs text-slate-500 font-normal">
       I agree to the{" "}
@@ -89,14 +94,36 @@ const RegisterForm = () => {
         </div>
       )}
 
-      {/* Name */}
+      {/* Name row */}
+      <div className="grid grid-cols-2 gap-3">
+        <AuthInput
+          label="First Name"
+          type="text"
+          placeholder="John"
+          icon={User}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          required
+        />
+        <AuthInput
+          label="Last Name"
+          type="text"
+          placeholder="Doe"
+          icon={User}
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          required
+        />
+      </div>
+
+      {/* Username */}
       <AuthInput
-        label="Full Name"
+        label="Username"
         type="text"
-        placeholder="John Doe"
-        icon={User}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        placeholder="johndoe"
+        icon={AtSign}
+        value={username}
+        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
         required
       />
 
@@ -148,17 +175,14 @@ const RegisterForm = () => {
       <AuthDivider />
 
       {/* Google Signup */}
-      <SocialLoginButton provider="google" onClick={() => alert("Google Signup simulated")}>
+      <SocialLoginButton provider="google" onClick={handleGoogleLogin}>
         Sign up with Google
       </SocialLoginButton>
 
       {/* Navigation Option */}
       <p className="text-center text-sm text-slate-500 pt-1">
         Already have an account?{" "}
-        <Link
-          to="/login"
-          className={authTheme.link}
-        >
+        <Link to="/login" className={authTheme.link}>
           Sign In
         </Link>
       </p>

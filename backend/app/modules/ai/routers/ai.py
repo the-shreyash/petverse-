@@ -18,24 +18,19 @@ from app.modules.ai.models.ai_history import AIConversation
 router = APIRouter()
 rate_limiter = AIRateLimiter()
 
-# In a real app we'd use a dependency like get_current_user to get the authenticated user ID.
-# For Phase B, we might still be building auth or passing it differently.
-# Here we'll simulate a logged-in user or require a user_id header/query for testing.
-from fastapi import Header
-
-async def get_current_user_id(x_user_id: str = Header(..., description="Simulated Auth User ID")) -> str:
-    return x_user_id
+from app.dependencies.auth import get_current_user
+from app.modules.user.models.user import User
 
 @router.post("/chat", response_model=ChatResponse, summary="Send a message to the AI assistant")
 async def chat_with_ai(
     request: ChatMessageRequest,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db)
 ):
-    rate_limiter.check_rate_limit(user_id)
+    rate_limiter.check_rate_limit(current_user.id)
     service = AIService(session)
     return await service.chat(
-        user_id=user_id,
+        user_id=current_user.id,
         message=request.message,
         provider_name=request.provider or "gemini",
         conversation_id=request.conversation_id,
@@ -45,22 +40,22 @@ async def chat_with_ai(
 @router.get("/history", response_model=List[AIConversationSchema], summary="Get AI conversation history")
 async def get_ai_history(
     limit: int = 20,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db)
 ):
     repo = AIConversationRepository(AIConversation, session)
-    return await repo.get_by_user_id(user_id, limit=limit)
+    return await repo.get_by_user_id(current_user.id, limit=limit)
 
 @router.post("/recommendations", response_model=RecommendationResponse, summary="Get AI-powered recommendations")
 async def get_recommendations(
     request: RecommendationRequest,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db)
 ):
-    rate_limiter.check_rate_limit(user_id)
+    rate_limiter.check_rate_limit(current_user.id)
     service = AIService(session)
     return await service.get_recommendations(
-        user_id=user_id,
+        user_id=current_user.id,
         pet_id=request.pet_id,
         category=request.category,
         provider_name="gemini"

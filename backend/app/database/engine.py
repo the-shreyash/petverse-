@@ -101,6 +101,40 @@ async def init_db(database_url: str, environment: str = "development") -> None:
         logger.critical("Database connection FAILED at startup: %s", exc)
         raise
 
+    # In development, create any model tables that don't yet exist so newly
+    # added models never 500 with "table doesn't exist" before a migration is
+    # written. This is non-destructive (checkfirst=True): existing tables are
+    # left untouched. Production relies on Alembic migrations exclusively.
+    if environment == "development":
+        try:
+            await create_missing_tables()
+        except Exception as exc:  # never let schema-sync take down startup
+            logger.warning(
+                "create_missing_tables skipped due to error (app will still "
+                "start; run migrations / reset dev schema): %s",
+                exc,
+            )
+
+
+async def create_missing_tables() -> None:
+    """
+    Create any model-defined tables that are absent from the database.
+
+    Imports the model registry so every table is registered on Base.metadata,
+    then issues CREATE TABLE IF NOT EXISTS for each. Never drops or alters
+    existing tables — for schema changes use an Alembic migration.
+    """
+    if _engine is None:
+        raise RuntimeError("Database not initialised. Call init_db() first.")
+
+    # Import triggers registration of all models on Base.metadata.
+    import app.database.models  # noqa: F401
+    from app.database.base import Base
+
+    async with _engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Verified all model tables exist (created any missing).")
+
 
 async def close_db() -> None:
     """

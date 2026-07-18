@@ -1,4 +1,5 @@
 import React from "react";
+import { productImage } from "@/utils/shopImage";
 import { Link } from "react-router-dom";
 import { Trash2, Plus, Minus, Calendar } from "lucide-react";
 import PriceTag from "../shared/PriceTag";
@@ -13,7 +14,7 @@ export default function CartItem({ item, onUpdateQuantity, onRemove }) {
       {/* Product Image + Details */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <img
-          src={product.images?.[0]}
+          src={productImage(product)}
           alt={product.name}
           className="h-16 w-16 rounded-2xl object-cover border border-slate-100 shrink-0"
         />

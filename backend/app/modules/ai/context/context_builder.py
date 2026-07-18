@@ -35,7 +35,7 @@ class AIContextBuilder:
                 context["pets"].append(self._serialize_pet_context(pet))
         else:
             # Otherwise, load all pets for the user
-            pets = await self.pet_repo.get_all_by_owner(user_id)
+            pets, _ = await self.pet_repo.list_by_owner(user_id, page=1, per_page=100)
             context["pets"] = [self._serialize_pet_context(p) for p in pets]
             
         return context

@@ -27,6 +27,15 @@ from app.modules.health.schemas.document import (
 )
 from app.modules.health.schemas.health_score import HealthScoreResponse
 from app.modules.health.schemas.timeline import TimelineResponse, TimelineEvent
+from app.modules.health.schemas.appointment import (
+    AppointmentCreate,
+    AppointmentUpdate,
+    AppointmentResponse,
+)
+from app.modules.health.schemas.clinic import (
+    ClinicCreate,
+    ClinicResponse,
+)
 
 __all__ = [
     "MedicalRecordCreate",
@@ -45,4 +54,9 @@ __all__ = [
     "HealthScoreResponse",
     "TimelineResponse",
     "TimelineEvent",
+    "AppointmentCreate",
+    "AppointmentUpdate",
+    "AppointmentResponse",
+    "ClinicCreate",
+    "ClinicResponse",
 ]

@@ -1,17 +1,59 @@
-// Unified Client-Side Event Bus linked to localStorage
+/**
+ * events.js - Unified Client-Side Event Bus
+ * 
+ * publishEvent() stores events locally AND persists to backend notifications API.
+ */
 
 const STORAGE_KEY = "petverse_event_log";
 const LISTENERS = new Set();
 
 export function getStoredEvents() {
   if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    return [];
+  }
 }
 
 export function saveStoredEvents(events) {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    } catch (e) {}
+  }
+}
+
+/**
+ * Persist event to backend notifications table.
+ * Fire-and-forget — failures don't block UI.
+ */
+async function persistToBackend(event) {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+
+  try {
+    await fetch(`${BASE_URL}/notifications`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title: event.title || event.type || "Notification",
+        body: event.description || event.body || "",
+        notification_type: event.type || "system",
+        category: event.category || "system",
+        priority: event.priority || "low",
+        action_url: event.action || null,
+        is_read: false
+      })
+    });
+  } catch (e) {
+    // Non-critical — local storage is fallback
   }
 }
 
@@ -26,7 +68,6 @@ export function publishEvent(eventData) {
   };
 
   const currentEvents = getStoredEvents();
-  // Keep event log at a healthy size limit (e.g., 200 events)
   const updatedEvents = [newEvent, ...currentEvents].slice(0, 200);
   saveStoredEvents(updatedEvents);
 
@@ -39,12 +80,15 @@ export function publishEvent(eventData) {
     }
   });
 
-  // Notify native browser elements (e.g. for dynamic notification toasts)
+  // Notify native browser elements
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("petverse-new-event", { detail: newEvent })
     );
   }
+
+  // Persist to backend asynchronously
+  persistToBackend(newEvent);
 
   return newEvent;
 }

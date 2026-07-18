@@ -6,7 +6,7 @@ from app.dependencies.common import get_db
 from app.dependencies.auth import get_current_user
 from app.modules.user.models.user import User
 
-from app.modules.community.schemas.post import PostCreate, PostUpdate, PostResponse
+from app.modules.community.schemas.post import PostCreate, PostUpdate, PostResponse, PostDetailResponse
 from app.modules.community.schemas.comment import CommentCreate, CommentResponse
 from app.modules.community.schemas.engagement import LikeResponse, BookmarkResponse
 
@@ -27,14 +27,14 @@ async def create_post(
     service = PostService(db)
     return await service.create_post(current_user.id, data)
 
-@router.get("/{post_id}", response_model=PostResponse)
+@router.get("/{post_id}", response_model=PostDetailResponse)
 async def get_post(
     post_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user) # Authentication required
 ):
     service = PostService(db)
-    return await service.get_post(post_id)
+    return await service.get_post_detail(post_id, current_user_id=current_user.id)
 
 @router.put("/{post_id}", response_model=PostResponse)
 async def update_post(

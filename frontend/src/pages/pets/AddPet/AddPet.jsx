@@ -5,8 +5,8 @@ import { ChevronLeft, ChevronRight, CheckCircle2, PawPrint } from "lucide-react"
 import DashboardLayout from "@/components/dashboard/layout";
 import DashboardHeader from "@/pages/dashboard/DashboardHome/DashboardHeader";
 import { usePetForm } from "@/hooks/usePetForm";
-import { getStoredPets, saveStoredPets } from "@/mock/pets";
 import { publishEvent } from "@/utils/events";
+import api from "@/services/api";
 
 // Form steps imports
 import BasicInformationForm from "@/components/pets/forms/BasicInformationForm";
@@ -49,31 +49,51 @@ export default function AddPet() {
     }
   };
 
-  const handleSubmit = () => {
-    const stored = getStoredPets();
-    const newId = `pet-${Date.now()}`;
-    const newPet = {
-      ...formData,
-      id: newId,
-      owner: "Shreyash Sharma",
-      gallery: formData.gallery.length > 0 ? formData.gallery : [formData.profileImage],
-      weightHistory: [
-        { date: new Date().toISOString().split("T")[0], weight: parseFloat(formData.weight) }
-      ]
-    };
 
-    const updatedList = [...stored, newPet];
-    saveStoredPets(updatedList);
-    publishEvent({
-      type: "PET_ADDED",
-      category: "system",
-      title: "New Pet Profile Added",
-      description: `${newPet.name} has been added to your PetVerse family!`,
-      priority: "medium",
-      action: `/pets/${newId}`
-    });
-    setCreatedPetId(newId);
-    setCurrentStep(6); // Go to Success step
+  const handleSubmit = async () => {
+    try {
+      const response = await api.post("/pets", {
+        name: formData.name,
+        species: formData.species ? formData.species.toUpperCase() : "OTHER",
+        breed: formData.breed || null,
+        gender: formData.gender ? formData.gender.toUpperCase() : "UNKNOWN",
+        birth_date: formData.birthDate || null,
+        weight: parseFloat(formData.weight) || null,
+        color: formData.color || null,
+        // photo handling will be updated in Section 3, for now pass null or ignore
+      });
+
+      if (response.status === 201 || response.status === 200) {
+        const newPetId = response.data.data?.id || "new";
+        
+        // Upload profile image if present
+        if (formData.profileImageFile && newPetId !== "new") {
+          const formDataObj = new FormData();
+          formDataObj.append("file", formData.profileImageFile);
+          try {
+            await api.post(`/pets/${newPetId}/profile-image`, formDataObj, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
+          } catch (imgErr) {
+            console.error("Failed to upload profile image:", imgErr);
+          }
+        }
+
+        publishEvent({
+          type: "PET_ADDED",
+          category: "system",
+          title: "New Pet Profile Added",
+          description: `${formData.name} has been added to your PetVerse family!`,
+          priority: "medium",
+          action: `/pets`
+        });
+        setCreatedPetId(newPetId);
+        setCurrentStep(6); // Go to Success step
+      }
+    } catch (err) {
+      console.error("Error adding pet:", err);
+      // Could display error notification here
+    }
   };
 
   const renderStepContent = () => {

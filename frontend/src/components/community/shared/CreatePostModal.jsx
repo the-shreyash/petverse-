@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { X, Image as ImageIcon, MapPin, PawPrint, Sparkles } from "lucide-react";
-import { getStoredPets } from "@/mock/pets";
+import { usePets } from "@/hooks/usePets";
 
 const PRESET_IMAGES = [
   "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80",
@@ -14,11 +14,9 @@ export default function CreatePostModal({ isOpen, onClose, onSave }) {
   const [location, setLocation] = useState("");
   const [petTag, setPetTag] = useState("");
   const [selectedImage, setSelectedImage] = useState("");
-  const [pets, setPets] = useState([]);
-
-  useEffect(() => {
-    setPets(getStoredPets());
-  }, []);
+  
+  const { pets: hooksPets } = usePets();
+  const pets = hooksPets || [];
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -65,7 +63,8 @@ export default function CreatePostModal({ isOpen, onClose, onSave }) {
     const selectedPetObj = pets.find((p) => p.id === petTag) || null;
     const images = selectedImage ? [selectedImage] : [];
 
-    onSave(content, images, location, selectedPetObj);
+    // addPost expects a pet_id string (or null), not the pet object.
+    onSave(content, images, location, selectedPetObj?.id || null);
     
     // Clear inputs
     setContent("");

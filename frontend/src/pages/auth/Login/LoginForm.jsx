@@ -8,9 +8,11 @@ import AuthDivider from "@/components/auth/AuthDivider";
 import SocialLoginButton from "@/components/auth/SocialLoginButton";
 import RememberMe from "@/components/auth/RememberMe";
 import { authTheme } from "@/styles/authTheme";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -19,33 +21,27 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await fetch("http://127.0.0.1:5001/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed");
-      }
-      
-      const token = data.token;
-      localStorage.setItem("token", token);
-
+      await login({ email, password });
       navigate("/dashboard");
-
     } catch (err) {
-      setError(err.message || "Server Error");
+      const detail = err?.response?.data?.detail
+        || err?.response?.data?.message
+        || err?.response?.data?.error
+        || "Invalid email or password";
+      setError(detail);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    // Redirect to backend Google OAuth
+    const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    window.location.href = `${backendUrl}/auth/google/login`;
   };
 
   return (
@@ -96,14 +92,14 @@ const LoginForm = () => {
 
       {/* Submit Button */}
       <AuthButton type="submit" isLoading={isLoading}>
-        Continue
+        Sign In
       </AuthButton>
 
       {/* Divider */}
       <AuthDivider />
 
       {/* Google Login */}
-      <SocialLoginButton provider="google" onClick={() => alert("Google Login simulated")} />
+      <SocialLoginButton provider="google" onClick={handleGoogleLogin} />
 
       {/* Navigation Option */}
       <p className="text-center text-sm text-slate-500 pt-2">
