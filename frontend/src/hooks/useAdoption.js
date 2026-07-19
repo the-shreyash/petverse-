@@ -6,24 +6,78 @@ export function useAdoption() {
   const [adoptablePets, setAdoptablePets] = useState([]);
   const [shelters, setShelters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  // Proximity filter state; null radius means "no distance limit".
+  const [origin, setOrigin] = useState(null); // { latitude, longitude }
+  const [radiusKm, setRadiusKm] = useState(null);
 
-  const fetchListings = useCallback(async () => {
+  const fetchListings = useCallback(async (opts = {}) => {
+    const { latitude, longitude } = opts.origin ?? origin ?? {};
+    const radius = opts.radiusKm !== undefined ? opts.radiusKm : radiusKm;
+
     try {
       setLoading(true);
-      const response = await api.get("/adoption?limit=100");
-      const listings = response.data || [];
-      setAdoptablePets(listings);
+      const params = new URLSearchParams({ limit: "100" });
+      if (latitude != null && longitude != null) {
+        params.set("lat", latitude);
+        params.set("lng", longitude);
+        if (radius) params.set("radius_km", radius);
+      }
+      const response = await api.get(`/adoption?${params.toString()}`);
+      setAdoptablePets(response.data || []);
     } catch (err) {
       console.error("Failed to fetch adoption listings", err);
       setAdoptablePets([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [origin, radiusKm]);
 
   useEffect(() => {
     fetchListings();
   }, [fetchListings]);
+
+  /** Re-query sorted by distance from the given coordinates. */
+  const applyNearbyFilter = useCallback(async (coords, radius = null) => {
+    setOrigin(coords);
+    setRadiusKm(radius);
+    await fetchListings({ origin: coords, radiusKm: radius });
+  }, [fetchListings]);
+
+  const clearNearbyFilter = useCallback(async () => {
+    setOrigin(null);
+    setRadiusKm(null);
+    await fetchListings({ origin: null, radiusKm: null });
+  }, [fetchListings]);
+
+  const fetchIncomingRequests = useCallback(async () => {
+    try {
+      const { data } = await api.get("/adoption/requests/incoming");
+      setIncomingRequests(data || []);
+    } catch (err) {
+      console.error("Failed to load incoming adoption requests", err);
+      setIncomingRequests([]);
+    }
+  }, []);
+
+  const fetchMyRequests = useCallback(async () => {
+    try {
+      const { data } = await api.get("/adoption/requests/mine");
+      setMyRequests(data || []);
+    } catch (err) {
+      console.error("Failed to load my adoption requests", err);
+      setMyRequests([]);
+    }
+  }, []);
+
+  const respondToRequest = useCallback(async (requestId, accept) => {
+    const { data } = await api.post(
+      `/adoption/requests/${requestId}/${accept ? "accept" : "reject"}`
+    );
+    await Promise.all([fetchIncomingRequests(), fetchListings()]);
+    return data;
+  }, [fetchIncomingRequests, fetchListings]);
 
   const addPetForAdoption = useCallback(async (listingData) => {
     try {
@@ -35,6 +89,8 @@ export function useAdoption() {
         city: listingData.city || null,
         state: listingData.state || null,
         country: listingData.country || null,
+        latitude: listingData.latitude ?? null,
+        longitude: listingData.longitude ?? null,
         gallery: listingData.gallery || []
       });
 
@@ -101,11 +157,20 @@ export function useAdoption() {
     adoptablePets,
     shelters,
     loading,
+    origin,
+    radiusKm,
+    incomingRequests,
+    myRequests,
     addPetForAdoption,
     submitApplication,
     favoritePet,
     deleteListing,
     fetchListingDetail,
+    applyNearbyFilter,
+    clearNearbyFilter,
+    fetchIncomingRequests,
+    fetchMyRequests,
+    respondToRequest,
     refresh: fetchListings
   };
 }

@@ -101,9 +101,11 @@ export default function ShopHome() {
                   key={prod.id}
                   product={prod}
                   reasoning={
-                    prod.category.includes("Food")
-                      ? `Targeted nutrition matches ${activePet.name}'s breed lifecycle requirements.`
-                      : `Highly recommended for joint structure and general wellness of ${activePet.breed}s.`
+                    // The API returns category_id, not a category name — reading
+                    // `.category` directly threw and white-screened the page.
+                    `${prod.category || prod.category_name || ""}`.includes("Food")
+                      ? `Targeted nutrition matches ${activePet?.name || "your pet"}'s breed lifecycle requirements.`
+                      : `Highly recommended for joint structure and general wellness of ${activePet?.breed || "your pet"}s.`
                   }
                   onAddToCart={(p) => addToCart(p, 1)}
                 />

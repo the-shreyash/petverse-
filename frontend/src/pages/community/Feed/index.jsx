@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { PlusCircle, Search, TrendingUp, Users, Heart, MessageSquare, AlertCircle } from "lucide-react";
@@ -9,36 +9,54 @@ import PetStoryCard from "@/components/community/cards/PetStoryCard";
 import PostCard from "@/components/community/cards/PostCard";
 import CreatePostModal from "@/components/community/shared/CreatePostModal";
 import { useCommunity } from "@/hooks/useCommunity";
+import { useStories } from "@/hooks/useStories";
 import { useAuth } from "@/contexts/AuthContext";
+import { avatarFor } from "@/utils/media";
 
 export default function FeedPage() {
-  const { posts, stories, addPost, likePost, bookmarkPost, deletePost, addStory } = useCommunity();
+  const { posts, addPost, likePost, bookmarkPost, deletePost } = useCommunity();
+  const { stories, addStory, markSeen } = useStories();
   const { user } = useAuth();
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedStory, setSelectedStory] = useState(null);
   const [storyIndex, setStoryIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [uploadingStory, setUploadingStory] = useState(false);
+  const storyFileRef = useRef(null);
 
-  const handleOpenStory = (story, index) => {
+  const openStoryAt = (index) => {
+    const story = stories[index];
+    if (!story) return;
     setSelectedStory(story);
     setStoryIndex(index);
+    if (!story.seen) markSeen(story.id);
   };
+
+  const handleOpenStory = (story, index) => openStoryAt(index);
 
   const handleNextStory = () => {
     if (storyIndex < stories.length - 1) {
-      const nextIndex = storyIndex + 1;
-      setSelectedStory(stories[nextIndex]);
-      setStoryIndex(nextIndex);
+      openStoryAt(storyIndex + 1);
     } else {
       setSelectedStory(null);
     }
   };
 
   const handlePrevStory = () => {
-    if (storyIndex > 0) {
-      const prevIndex = storyIndex - 1;
-      setSelectedStory(stories[prevIndex]);
-      setStoryIndex(prevIndex);
+    if (storyIndex > 0) openStoryAt(storyIndex - 1);
+  };
+
+  const handleStoryFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    try {
+      setUploadingStory(true);
+      await addStory(file);
+    } catch (err) {
+      console.error("Failed to create story", err);
+    } finally {
+      setUploadingStory(false);
     }
   };
 
@@ -98,15 +116,29 @@ export default function FeedPage() {
           {/* Stories list */}
           <div className="flex items-center gap-4 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-none">
             {/* Create Story Button */}
+            <input
+              ref={storyFileRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handleStoryFile}
+            />
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              onClick={() => addStory("https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80", "Luna")}
-              className="flex flex-col items-center gap-1.5 shrink-0"
+              whileHover={{ scale: uploadingStory ? 1 : 1.05 }}
+              disabled={uploadingStory}
+              onClick={() => storyFileRef.current?.click()}
+              className="flex flex-col items-center gap-1.5 shrink-0 disabled:opacity-60"
             >
               <div className="h-[74px] w-[74px] rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center bg-white shadow-sm hover:border-emerald-500 transition">
-                <PlusCircle size={24} className="text-slate-400 hover:text-emerald-500" />
+                {uploadingStory ? (
+                  <span className="h-5 w-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                ) : (
+                  <PlusCircle size={24} className="text-slate-400 hover:text-emerald-500" />
+                )}
               </div>
-              <span className="text-[10px] font-bold text-slate-500">Post Story</span>
+              <span className="text-[10px] font-bold text-slate-500">
+                {uploadingStory ? "Uploading..." : "Post Story"}
+              </span>
             </motion.button>
 
             {/* Stories */}
@@ -149,7 +181,7 @@ export default function FeedPage() {
           {/* Add Post Widget Card */}
           <GlassCard className="p-5 flex items-center gap-4 text-left cursor-pointer" hover={true} onClick={() => setIsPostModalOpen(true)}>
             <img
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"
+              src={avatarFor(user)}
               alt="avatar"
               className="h-10 w-10 rounded-xl object-cover"
             />

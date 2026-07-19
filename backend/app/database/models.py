@@ -29,3 +29,4 @@ import app.modules.shop.models.wishlist  # noqa: F401
 
 import app.modules.community.models  # noqa: F401
 import app.modules.notifications.models  # noqa: F401
+import app.modules.messaging.models  # noqa: F401

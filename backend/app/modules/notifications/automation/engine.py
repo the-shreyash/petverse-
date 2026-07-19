@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events.base import DomainEvent
 from app.modules.community.events import PostCreatedEvent, CommentAddedEvent, LikeAddedEvent
+from app.modules.messaging.events import MessageSentEvent
 from app.modules.notifications.models.enums import NotificationType, NotificationPriority
 from app.modules.notifications.schemas.notification import NotificationCreate
 from app.modules.notifications.services.notification_service import NotificationService
@@ -20,7 +21,30 @@ class AutomationEngine:
             await self._handle_comment(event)
         elif isinstance(event, LikeAddedEvent):
             await self._handle_like(event)
+        elif isinstance(event, MessageSentEvent):
+            await self._handle_message(event)
         # Add Health events (VaccinationDue, etc) here later
+
+    async def _handle_message(self, event: MessageSentEvent):
+        payload = event.payload
+        if payload["sender_id"] == payload["recipient_id"]:
+            return
+
+        notif = NotificationCreate(
+            user_id=payload["recipient_id"],
+            type=NotificationType.SOCIAL,
+            priority=NotificationPriority.NORMAL,
+            title="New Message",
+            message=payload.get("preview") or "You have a new message.",
+            entity_type="Message",
+            entity_id=payload["message_id"],
+            meta_data={
+                "conversation_id": payload["conversation_id"],
+                "sender_id": payload["sender_id"],
+            },
+        )
+        await self.notif_service.create_notification(notif)
+        await self.session.commit()
 
     async def _handle_comment(self, event: CommentAddedEvent):
         payload = event.payload

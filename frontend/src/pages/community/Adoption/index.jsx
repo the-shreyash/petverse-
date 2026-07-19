@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, Search, Heart, Plus, MapPin, DollarSign, PawPrint } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdoption } from "@/hooks/useAdoption";
 import { usePets } from "@/hooks/usePets";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { Link } from "react-router-dom";
+
+const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
 
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") || "http://localhost:8000";
 
@@ -48,6 +51,16 @@ function ListingCard({ listing, onInterested }) {
             <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
               <MapPin size={10} />
               {[listing.city, listing.state, listing.country].filter(Boolean).join(", ")}
+              {listing.distance_km != null && (
+                <span
+                  data-testid="distance-badge"
+                  className="ml-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600"
+                >
+                  {listing.distance_km < 1
+                    ? "under 1 km away"
+                    : `${Math.round(listing.distance_km)} km away`}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -89,6 +102,9 @@ function CreateListingModal({ userPets, onClose, onSubmit }) {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const { coords, status: geoStatus, error: geoError, requestLocation } = useGeolocation();
 
   const selectedPet = userPets.find(p => p.id === selectedPetId);
 
@@ -96,6 +112,7 @@ function CreateListingModal({ userPets, onClose, onSubmit }) {
     e.preventDefault();
     if (!selectedPetId) return;
     setSubmitting(true);
+    setError("");
     try {
       await onSubmit({
         pet_id: selectedPetId,
@@ -104,11 +121,15 @@ function CreateListingModal({ userPets, onClose, onSubmit }) {
         adoption_fee: parseFloat(fee) || 0,
         city,
         state,
+        // Attached when the browser granted location; listings without
+        // coordinates still work, they just don't appear in radius searches.
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
         gallery: []
       });
       onClose();
     } catch (err) {
-      alert("Failed to create listing. Please try again.");
+      setError(err?.response?.data?.message || "Failed to create listing. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -122,6 +143,44 @@ function CreateListingModal({ userPets, onClose, onSubmit }) {
         className="bg-white rounded-[24px] p-8 max-w-lg w-full mx-4 shadow-2xl"
       >
         <h2 className="text-xl font-black text-slate-800 mb-6">Create Adoption Listing</h2>
+
+        {/* Location capture — enables radius search for nearby adopters. */}
+        <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs">
+              <p className="font-bold text-slate-700 flex items-center gap-1.5">
+                <MapPin size={12} className="text-emerald-500" />
+                Listing location
+              </p>
+              <p className="text-slate-500 mt-0.5" data-testid="geo-status">
+                {coords
+                  ? `Coordinates attached (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`
+                  : geoError || "Share your location so nearby adopters can find this pet."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={requestLocation}
+              disabled={geoStatus === "prompting"}
+              data-testid="use-my-location"
+              className="shrink-0 rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-emerald-400 hover:text-emerald-600 transition disabled:opacity-60"
+            >
+              {geoStatus === "prompting" ? "Locating..." : coords ? "Update" : "Use my location"}
+            </button>
+          </div>
+          {!coords && (geoStatus === "denied" || geoStatus === "unavailable") && (
+            <p className="mt-2 text-[11px] text-slate-500">
+              No problem — enter a city below and the listing will still be searchable by name.
+            </p>
+          )}
+        </div>
+
+        {error && (
+          <p className="mb-4 text-xs font-semibold text-rose-600 bg-rose-50 rounded-xl px-3 py-2">
+            {error}
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">Select Pet *</label>
@@ -214,10 +273,50 @@ function CreateListingModal({ userPets, onClose, onSubmit }) {
 }
 
 export default function AdoptionPageContent() {
-  const { adoptablePets, loading, addPetForAdoption, submitApplication } = useAdoption();
+  const {
+    adoptablePets,
+    loading,
+    radiusKm,
+    origin,
+    incomingRequests,
+    addPetForAdoption,
+    submitApplication,
+    applyNearbyFilter,
+    clearNearbyFilter,
+    fetchIncomingRequests,
+    respondToRequest,
+  } = useAdoption();
   const { pets: userPets } = usePets();
+  const { coords, status: geoStatus, error: geoError, requestLocation } = useGeolocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [respondingId, setRespondingId] = useState(null);
+
+  useEffect(() => {
+    fetchIncomingRequests();
+  }, [fetchIncomingRequests]);
+
+  const handleUseLocation = async () => {
+    const position = coords || (await requestLocation());
+    if (position) await applyNearbyFilter(position, radiusKm);
+  };
+
+  const handleRadiusChange = async (value) => {
+    const radius = value ? Number(value) : null;
+    const position = coords || (await requestLocation());
+    if (position) await applyNearbyFilter(position, radius);
+  };
+
+  const handleRespond = async (requestId, accept) => {
+    setRespondingId(requestId);
+    try {
+      await respondToRequest(requestId, accept);
+    } catch (err) {
+      console.error("Failed to respond to adoption request", err);
+    } finally {
+      setRespondingId(null);
+    }
+  };
 
   const filteredPets = adoptablePets.filter((listing) => {
     if (!searchQuery) return true;
@@ -273,6 +372,101 @@ export default function AdoptionPageContent() {
           </button>
         )}
       </div>
+
+      {/* Nearby / radius controls */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <button
+          onClick={handleUseLocation}
+          disabled={geoStatus === "prompting"}
+          data-testid="find-nearby"
+          className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition disabled:opacity-60"
+        >
+          <MapPin size={14} />
+          {geoStatus === "prompting" ? "Locating..." : "Find pets near me"}
+        </button>
+
+        <select
+          value={radiusKm ?? ""}
+          onChange={(e) => handleRadiusChange(e.target.value)}
+          data-testid="radius-select"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-600 outline-none focus:border-emerald-400"
+        >
+          <option value="">Any distance</option>
+          {RADIUS_OPTIONS.map((r) => (
+            <option key={r} value={r}>Within {r} km</option>
+          ))}
+        </select>
+
+        {origin && (
+          <button
+            onClick={clearNearbyFilter}
+            className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 transition"
+          >
+            Clear location
+          </button>
+        )}
+
+        <span className="text-xs text-slate-500 font-semibold" data-testid="geo-hint">
+          {origin
+            ? `Sorted by distance${radiusKm ? ` · within ${radiusKm} km` : ""}`
+            : geoError || "Allow location to sort listings by distance."}
+        </span>
+      </div>
+
+      {/* Requests on my listings */}
+      {incomingRequests.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5" data-testid="incoming-requests">
+          <h3 className="font-bold text-slate-800 text-sm mb-3">
+            Adoption requests on your listings
+          </h3>
+          <div className="space-y-2">
+            {incomingRequests.map((req) => (
+              <div
+                key={req.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-700 truncate">
+                    {req.listing_title || "Listing"}
+                  </p>
+                  {req.message && (
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">"{req.message}"</p>
+                  )}
+                </div>
+
+                {req.status === "PENDING" ? (
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => handleRespond(req.id, true)}
+                      disabled={respondingId === req.id}
+                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-600 transition disabled:opacity-60"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleRespond(req.id, false)}
+                      disabled={respondingId === req.id}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition disabled:opacity-60"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                      req.status === "ACCEPTED"
+                        ? "bg-emerald-50 text-emerald-600"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Listings Grid */}
       {loading ? (

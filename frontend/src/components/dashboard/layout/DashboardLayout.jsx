@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import Sidebar from "./Sidebar";
 import TopNavbar from "./TopNavbar";
 
-const DashboardLayout = ({ children }) => {
+const DashboardLayout = ({ children, pageTitle, pageDescription }) => {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
@@ -10,8 +10,9 @@ const DashboardLayout = ({ children }) => {
 
       {/* Main content */}
       <div className="lg:ml-72">
-        {/* Top navigation */}
-        <TopNavbar />
+        {/* Top navigation — every page passes its own title/description; these
+            were previously dropped here, so all pages rendered "Dashboard". */}
+        <TopNavbar pageTitle={pageTitle} pageDescription={pageDescription} />
 
         {/* Page content */}
         <motion.main

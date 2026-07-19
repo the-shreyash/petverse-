@@ -1,11 +1,14 @@
 import AppRoutes from "./routes/AppRoutes";
 import { AIContextProvider } from "./contexts/AIContext";
+import ErrorBoundary from "./components/ui/ErrorBoundary/ErrorBoundary";
 
 function App() {
   return (
-    <AIContextProvider>
-      <AppRoutes />
-    </AIContextProvider>
+    <ErrorBoundary>
+      <AIContextProvider>
+        <AppRoutes />
+      </AIContextProvider>
+    </ErrorBoundary>
   );
 }
 

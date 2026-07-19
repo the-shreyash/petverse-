@@ -70,20 +70,31 @@ export default function PetStoryCard({
             />
             <div className="text-left">
               <p className="font-semibold text-sm drop-shadow-md">{story.authorName}</p>
-              {story.petName && (
+              {story.caption && (
                 <p className="text-[10px] text-emerald-300 font-bold drop-shadow-md">
-                  🐾 Tagged: {story.petName} ({story.petBreed})
+                  {story.caption}
                 </p>
               )}
             </div>
           </div>
 
           {/* Main Media */}
-          <img
-            src={story.mediaUrl}
-            alt="story media"
-            className="h-full w-full object-cover select-none pointer-events-none"
-          />
+          {story.mediaType === "VIDEO" ? (
+            <video
+              src={story.mediaUrl}
+              className="h-full w-full object-cover select-none"
+              autoPlay
+              muted
+              playsInline
+              loop
+            />
+          ) : (
+            <img
+              src={story.mediaUrl}
+              alt="story media"
+              className="h-full w-full object-cover select-none pointer-events-none"
+            />
+          )}
         </motion.div>
 
         {/* Next Arrow */}

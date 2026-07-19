@@ -34,6 +34,7 @@ class PostService:
             "author": self._author_dict(post.author),
             "content": post.content,
             "media_urls": post.media_urls or [],
+            "hashtags": post.hashtags or [],
             "visibility": post.visibility,
             "location": post.location,
             "pet_id": post.pet_id,

@@ -73,6 +73,26 @@ class UploadService:
 
         return f"/uploads/{subdir}/{filename}"
 
+    async def save_media(
+        self,
+        file: UploadFile,
+        *,
+        subdir: str,
+        allowed_content_types: set[str],
+        max_size_bytes: int,
+    ) -> str:
+        """
+        Persist an image *or* video upload. Same contract as ``save_image`` —
+        the validation and storage rules are identical, this alias just avoids
+        misleading call sites that accept video (e.g. story media).
+        """
+        return await self.save_image(
+            file,
+            subdir=subdir,
+            allowed_content_types=allowed_content_types,
+            max_size_bytes=max_size_bytes,
+        )
+
     def delete(self, url: Optional[str]) -> None:
         """
         Remove a previously-saved file given its public URL. Silent no-op if
@@ -96,4 +116,11 @@ _EXTENSIONS_BY_CONTENT_TYPE = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
     "image/webp": ".webp",
+    "image/gif": ".gif",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
 }
+
+IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+VIDEO_CONTENT_TYPES = {"video/mp4", "video/webm", "video/quicktime"}

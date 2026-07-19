@@ -12,23 +12,47 @@ export default function MessagesPage() {
     activeConvId,
     activeConversation,
     isTyping,
+    sending,
     selectConversation,
-    sendMessage
+    sendMessage,
+    uploadImage
   } = useMessaging();
 
   const [messageText, setMessageText] = useState("");
+  const [attaching, setAttaching] = useState(false);
   const chatEndRef = useRef(null);
+  const imageInputRef = useRef(null);
+
+  const handleImagePick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      setAttaching(true);
+      const url = await uploadImage(file);
+      await sendMessage("", url);
+    } catch (err) {
+      console.error("Failed to send image", err);
+    } finally {
+      setAttaching(false);
+    }
+  };
 
   // Auto-scroll chat window to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConversation, isTyping]);
 
-  const handleSendSubmit = (e) => {
+  const handleSendSubmit = async (e) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
-    sendMessage(messageText);
+    const text = messageText.trim();
+    if (!text || sending) return;
     setMessageText("");
+    try {
+      await sendMessage(text);
+    } catch {
+      setMessageText(text); // restore so the user doesn't lose their message
+    }
   };
 
   return (
@@ -156,12 +180,25 @@ export default function MessagesPage() {
 
               {/* Text Area Form input panel */}
               <form onSubmit={handleSendSubmit} className="p-4 border-t border-slate-100 flex items-center gap-3">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImagePick}
+                  data-testid="message-image-input"
+                />
                 <button
                   type="button"
-                  onClick={() => sendMessage("", "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80")}
-                  className="p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 text-slate-400 hover:text-slate-600 transition outline-none"
+                  disabled={attaching}
+                  onClick={() => imageInputRef.current?.click()}
+                  className="p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 text-slate-400 hover:text-slate-600 transition outline-none disabled:opacity-50"
                 >
-                  <ImageIcon size={18} />
+                  {attaching ? (
+                    <span className="block h-[18px] w-[18px] rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                  ) : (
+                    <ImageIcon size={18} />
+                  )}
                 </button>
                 
                 <input

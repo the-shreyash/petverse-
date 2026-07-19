@@ -18,6 +18,7 @@ class Post(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     
     content: Mapped[str] = mapped_column(Text, nullable=False)
     media_urls: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    hashtags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     visibility: Mapped[PostVisibility] = mapped_column(Enum(PostVisibility, native_enum=False, length=16), default=PostVisibility.PUBLIC, nullable=False)
     
     # Simple string for location for now, per user plan

@@ -3,12 +3,31 @@ import { motion } from "framer-motion";
 const GlassCard = ({
     children,
     className = "",
-    hover = true
+    hover = true,
+    onClick,
+    ...rest
 }) => {
 
     return (
 
         <motion.div
+
+            // Forward interaction props: callers pass onClick (e.g. the feed's post
+            // composer card) and previously they were silently dropped here.
+            onClick={onClick}
+            {...(onClick
+                ? {
+                    role: "button",
+                    tabIndex: 0,
+                    onKeyDown: (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onClick(e);
+                        }
+                    },
+                }
+                : {})}
+            {...rest}
 
             whileHover={
                 hover
