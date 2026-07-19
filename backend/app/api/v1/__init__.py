@@ -23,6 +23,7 @@ from app.modules.health.routers import health_module_router
 from app.modules.dashboard.routers import dashboard_router
 from app.modules.ai.routers.ai import router as ai_router
 from app.modules.shop.routers.shop_router import router as shop_router
+from app.modules.messaging.routers.messaging import router as messaging_router
 
 # ─── V1 aggregator ────────────────────────────────────────────────────────────
 api_v1_router = APIRouter()
@@ -62,4 +63,5 @@ api_v1_router.include_router(lost_pet_router)
 from app.modules.notifications.routers import notif_router, pref_router, rem_router
 api_v1_router.include_router(notif_router)
 api_v1_router.include_router(pref_router)
+api_v1_router.include_router(messaging_router)
 api_v1_router.include_router(rem_router)

@@ -17,3 +17,13 @@ class AdoptionStatus(str, Enum):
 class LostPetStatus(str, Enum):
     LOST = "LOST"
     FOUND = "FOUND"
+
+class StoryMediaType(str, Enum):
+    IMAGE = "IMAGE"
+    VIDEO = "VIDEO"
+
+class AdoptionRequestStatus(str, Enum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"

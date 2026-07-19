@@ -25,37 +25,15 @@ export function saveStoredEvents(events) {
   }
 }
 
-/**
- * Persist event to backend notifications table.
- * Fire-and-forget — failures don't block UI.
+/*
+ * Note: this bus is deliberately client-local.
+ *
+ * It used to POST every event to /notifications, which 405'd on every call —
+ * that route is read-only by design. Durable notifications are produced
+ * server-side from domain events (see app/modules/notifications), which is the
+ * authoritative source: it works across devices and cannot be forged by a
+ * client. This bus only drives immediate in-tab UI feedback.
  */
-async function persistToBackend(event) {
-  const token = localStorage.getItem("token");
-  if (!token) return;
-
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-  try {
-    await fetch(`${BASE_URL}/notifications`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        title: event.title || event.type || "Notification",
-        body: event.description || event.body || "",
-        notification_type: event.type || "system",
-        category: event.category || "system",
-        priority: event.priority || "low",
-        action_url: event.action || null,
-        is_read: false
-      })
-    });
-  } catch (e) {
-    // Non-critical — local storage is fallback
-  }
-}
 
 export function publishEvent(eventData) {
   const newEvent = {
@@ -86,9 +64,6 @@ export function publishEvent(eventData) {
       new CustomEvent("petverse-new-event", { detail: newEvent })
     );
   }
-
-  // Persist to backend asynchronously
-  persistToBackend(newEvent);
 
   return newEvent;
 }

@@ -9,7 +9,13 @@ export default function StoryCard({ story, onClick }) {
       onClick={onClick}
       className="flex flex-col items-center gap-1.5 shrink-0 outline-none"
     >
-      <div className="relative p-[3px] rounded-full bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 shadow-md">
+      <div
+        className={`relative p-[3px] rounded-full shadow-md ${
+          story.seen
+            ? "bg-slate-300"
+            : "bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500"
+        }`}
+      >
         <div className="h-16 w-16 rounded-full border-2 border-white overflow-hidden bg-slate-100">
           <img
             src={story.mediaUrl}

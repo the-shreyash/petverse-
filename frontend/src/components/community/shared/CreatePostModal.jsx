@@ -1,22 +1,55 @@
 import React, { useRef, useEffect, useState } from "react";
-import { X, Image as ImageIcon, MapPin, PawPrint, Sparkles } from "lucide-react";
+import { X, Image as ImageIcon, MapPin, PawPrint, Sparkles, Trash2 } from "lucide-react";
 import { usePets } from "@/hooks/usePets";
+import api from "@/services/api";
+import { resolveMediaUrl } from "@/utils/media";
 
-const PRESET_IMAGES = [
-  "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&auto=format&fit=crop&q=80"
-];
+/** Pull #hashtags out of the body so they are stored structurally, not just inline. */
+function extractHashtags(text) {
+  return [...(text.matchAll(/#([\w-]+)/g) || [])].map((m) => m[1]);
+}
 
 export default function CreatePostModal({ isOpen, onClose, onSave }) {
   const dialogRef = useRef(null);
+  const fileRef = useRef(null);
   const [content, setContent] = useState("");
   const [location, setLocation] = useState("");
   const [petTag, setPetTag] = useState("");
-  const [selectedImage, setSelectedImage] = useState("");
-  
+  const [media, setMedia] = useState([]); // [{ url, type }]
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
   const { pets: hooksPets } = usePets();
   const pets = hooksPets || [];
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+
+    setError("");
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+        const { data } = await api.post("/community/posts/media", form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setMedia((prev) => [
+          ...prev,
+          { url: data.media_url, type: file.type.startsWith("video/") ? "video" : "image" },
+        ]);
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || "Upload failed. Check the file type and size.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeMedia = (url) => setMedia((prev) => prev.filter((m) => m.url !== url));
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -56,22 +89,28 @@ export default function CreatePostModal({ isOpen, onClose, onSave }) {
     return () => dialog.removeEventListener("click", handleBackdropClick);
   }, [onClose]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || uploading || submitting) return;
 
     const selectedPetObj = pets.find((p) => p.id === petTag) || null;
-    const images = selectedImage ? [selectedImage] : [];
+    const urls = media.map((m) => m.url);
 
-    // addPost expects a pet_id string (or null), not the pet object.
-    onSave(content, images, location, selectedPetObj?.id || null);
-    
-    // Clear inputs
-    setContent("");
-    setLocation("");
-    setPetTag("");
-    setSelectedImage("");
-    onClose();
+    setSubmitting(true);
+    setError("");
+    try {
+      // addPost expects a pet_id string (or null), not the pet object.
+      await onSave(content, urls, location, selectedPetObj?.id || null, extractHashtags(content));
+      setContent("");
+      setLocation("");
+      setPetTag("");
+      setMedia([]);
+      onClose();
+    } catch (err) {
+      setError(err?.response?.data?.message || "Could not publish your post. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -137,26 +176,68 @@ export default function CreatePostModal({ isOpen, onClose, onSave }) {
             required
           />
 
-          {/* Quick Preset Image Select */}
+          {/* Media upload */}
           <div>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-              Add Photo
+              Photos & Videos
             </label>
-            <div className="flex gap-3 mt-2">
-              {PRESET_IMAGES.map((img, i) => (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => setSelectedImage(selectedImage === img ? "" : img)}
-                  className={`relative h-16 w-16 overflow-hidden rounded-xl border-2 transition ${
-                    selectedImage === img ? "border-emerald-500 scale-95 shadow-md" : "border-transparent"
-                  }`}
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={handleFiles}
+              data-testid="post-media-input"
+            />
+
+            <div className="flex flex-wrap gap-3 mt-2">
+              {media.map((m) => (
+                <div
+                  key={m.url}
+                  className="relative h-16 w-16 overflow-hidden rounded-xl border-2 border-emerald-500 group"
                 >
-                  <img src={img} alt="preset" className="h-full w-full object-cover" />
-                </button>
+                  {m.type === "video" ? (
+                    <video src={resolveMediaUrl(m.url)} className="h-full w-full object-cover" />
+                  ) : (
+                    <img
+                      src={resolveMediaUrl(m.url)}
+                      alt="upload"
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeMedia(m.url)}
+                    aria-label="Remove media"
+                    className="absolute inset-0 flex items-center justify-center bg-slate-900/60 text-white opacity-0 group-hover:opacity-100 transition"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               ))}
+
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="h-16 w-16 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-emerald-500 hover:text-emerald-500 transition disabled:opacity-60"
+              >
+                {uploading ? (
+                  <span className="h-4 w-4 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                ) : (
+                  <ImageIcon size={18} />
+                )}
+              </button>
             </div>
           </div>
+
+          {error && (
+            <p className="text-xs font-semibold text-rose-600 bg-rose-50 rounded-xl px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {/* Tag Pet */}
@@ -230,9 +311,10 @@ export default function CreatePostModal({ isOpen, onClose, onSave }) {
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-100 hover:opacity-95 transition"
+              disabled={uploading || submitting || !content.trim()}
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-100 hover:opacity-95 transition disabled:opacity-50"
             >
-              Publish Post
+              {submitting ? "Publishing..." : "Publish Post"}
             </button>
           </div>
         </form>

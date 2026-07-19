@@ -2,9 +2,10 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ForbiddenException
+from app.core.exceptions import NotFoundException, ForbiddenException, ConflictException
 from app.core.events.bus import bus
-from app.modules.community.models import AdoptionListing
+from app.modules.community.models import AdoptionListing, AdoptionRequest
+from app.modules.community.models.enums import AdoptionStatus, AdoptionRequestStatus
 from app.modules.community.schemas.adoption import AdoptionListingCreate, AdoptionListingUpdate
 from app.modules.community.repositories.adoption_repository import AdoptionRepository
 from app.modules.community.events import AdoptionRequestEvent
@@ -27,6 +28,32 @@ class AdoptionService:
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> list[AdoptionListing]:
         return await self.repo.get_all(skip=skip, limit=limit)
+
+    async def search(self, **kwargs) -> list[dict]:
+        """Listings with optional proximity ranking; distance_km is None when
+        the caller supplied no coordinates."""
+        rows = await self.repo.search(**kwargs)
+        out = []
+        for listing, distance in rows:
+            out.append({
+                "id": listing.id,
+                "owner_id": listing.owner_id,
+                "pet_id": listing.pet_id,
+                "title": listing.title,
+                "description": listing.description,
+                "status": listing.status,
+                "adoption_fee": float(listing.adoption_fee) if listing.adoption_fee is not None else None,
+                "city": listing.city,
+                "state": listing.state,
+                "country": listing.country,
+                "latitude": float(listing.latitude) if listing.latitude is not None else None,
+                "longitude": float(listing.longitude) if listing.longitude is not None else None,
+                "gallery": listing.gallery or [],
+                "created_at": listing.created_at,
+                "updated_at": listing.updated_at,
+                "distance_km": round(distance, 2) if distance is not None else None,
+            })
+        return out
 
     async def get_by_id(self, listing_id: str) -> AdoptionListing:
         listing = await self.repo.get_by_id(listing_id)
@@ -144,43 +171,122 @@ class AdoptionService:
 
         await self.repo.delete(listing)
 
+    async def _notify(self, user_id: str, title: str, message: str, entity_id: str, priority=None):
+        from app.modules.notifications.services.notification_service import NotificationService
+        from app.modules.notifications.schemas.notification import NotificationCreate
+        from app.modules.notifications.models.enums import NotificationType, NotificationPriority
+
+        notif_service = NotificationService(self.repo.session)
+        await notif_service.create_notification(
+            NotificationCreate(
+                user_id=user_id,
+                type=NotificationType.SOCIAL,
+                priority=priority or NotificationPriority.HIGH,
+                title=title,
+                message=message,
+                entity_type="adoption",
+                entity_id=entity_id,
+            )
+        )
+
+    @staticmethod
+    def _serialize_request(req, listing=None) -> dict:
+        return {
+            "id": req.id,
+            "listing_id": req.listing_id,
+            "applicant_id": req.applicant_id,
+            "message": req.message,
+            "status": req.status,
+            "created_at": req.created_at,
+            "listing_title": listing.title if listing else None,
+        }
+
     async def apply_to_listing(
         self, applicant_id: str, listing_id: str, message: Optional[str] = None
     ) -> dict:
         """
         Register interest in an adoption listing.
 
-        Notifies the listing owner so the request surfaces in their
-        notification center and dashboard activity feed. Applicants cannot
-        apply to their own listings.
+        The request is persisted so the owner can later accept or reject it —
+        a notification alone would leave no state to act on.
         """
         listing = await self.get_by_id(listing_id)
         if listing.owner_id == applicant_id:
             raise ForbiddenException("You cannot apply to your own listing.")
 
-        # Notify the owner via the real notification pipeline.
-        from app.modules.notifications.services.notification_service import (
-            NotificationService,
-        )
-        from app.modules.notifications.schemas.notification import NotificationCreate
-        from app.modules.notifications.models.enums import (
-            NotificationType,
-            NotificationPriority,
-        )
-
-        notif_service = NotificationService(self.repo.session)
-        await notif_service.create_notification(
-            NotificationCreate(
-                user_id=listing.owner_id,
-                type=NotificationType.SOCIAL,
-                priority=NotificationPriority.HIGH,
-                title="New adoption interest",
-                message=(
-                    f"Someone is interested in adopting {listing.title}."
-                    + (f' They said: "{message}"' if message else "")
-                ),
-                entity_type="adoption",
-                entity_id=listing.id,
+        existing = await self.repo.get_request(listing_id, applicant_id)
+        if existing:
+            if existing.status == AdoptionRequestStatus.PENDING:
+                raise ConflictException("You have already applied to this listing.")
+            # Re-applying after a rejection resets the request rather than
+            # violating the (listing, applicant) uniqueness constraint.
+            existing.status = AdoptionRequestStatus.PENDING
+            existing.message = message
+            request = await self.repo.save(existing)
+        else:
+            request = await self.repo.add_request(
+                AdoptionRequest(
+                    listing_id=listing_id,
+                    applicant_id=applicant_id,
+                    message=message,
+                )
             )
+
+        await self._notify(
+            listing.owner_id,
+            "New adoption interest",
+            f"Someone is interested in adopting {listing.title}."
+            + (f' They said: "{message}"' if message else ""),
+            listing.id,
         )
-        return {"status": "submitted", "listing_id": listing_id}
+        return self._serialize_request(request, listing)
+
+    async def list_requests_for_listing(self, user_id: str, listing_id: str) -> list[dict]:
+        listing = await self.get_by_id(listing_id)
+        if listing.owner_id != user_id:
+            raise ForbiddenException("Only the listing owner can view its requests")
+        requests = await self.repo.list_requests_for_listing(listing_id)
+        return [self._serialize_request(r, listing) for r in requests]
+
+    async def list_incoming_requests(self, owner_id: str) -> list[dict]:
+        requests = await self.repo.list_requests_for_owner(owner_id)
+        return [self._serialize_request(r) for r in requests]
+
+    async def list_my_requests(self, applicant_id: str) -> list[dict]:
+        requests = await self.repo.list_requests_by_applicant(applicant_id)
+        return [self._serialize_request(r) for r in requests]
+
+    async def respond_to_request(self, owner_id: str, request_id: str, accept: bool) -> dict:
+        request = await self.repo.get_request_by_id(request_id)
+        if not request:
+            raise NotFoundException("Adoption request not found")
+
+        listing = await self.get_by_id(request.listing_id)
+        if listing.owner_id != owner_id:
+            raise ForbiddenException("Only the listing owner can respond to this request")
+        if request.status != AdoptionRequestStatus.PENDING:
+            raise ConflictException(f"This request is already {request.status.value.lower()}.")
+
+        request.status = (
+            AdoptionRequestStatus.ACCEPTED if accept else AdoptionRequestStatus.REJECTED
+        )
+        request = await self.repo.save(request)
+
+        if accept:
+            # Accepting one applicant takes the pet off the market and closes
+            # the remaining requests, so state stays consistent.
+            listing.status = AdoptionStatus.PENDING
+            await self.repo.save(listing)
+            await self.repo.reject_other_pending(listing.id, request.id)
+
+        await self._notify(
+            request.applicant_id,
+            "Adoption request accepted" if accept else "Adoption request declined",
+            (
+                f"Your request to adopt {listing.title} was accepted! The owner will be in touch."
+                if accept
+                else f"Your request to adopt {listing.title} was declined."
+            ),
+            listing.id,
+        )
+        return self._serialize_request(request, listing)

@@ -54,6 +54,14 @@ class ConflictException(PetVerseException):
     def __init__(self, message: str = "Resource conflict", error_code: str = "Conflict"):
         super().__init__(message, error_code=error_code)
 
+class ValidationException(PetVerseException):
+    """Raised when a request is well-formed but semantically invalid.
+
+    Maps to 400 via the default branch in ``petverse_exception_handler``.
+    """
+    def __init__(self, message: str = "Invalid request", error_code: str = "ValidationError"):
+        super().__init__(message, error_code=error_code)
+
 # ─── Response Builder ─────────────────────────────────────────────────────────
 
 def _error_response(

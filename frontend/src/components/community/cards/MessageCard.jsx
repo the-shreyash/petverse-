@@ -2,13 +2,13 @@ import React from "react";
 import { Check, CheckCheck } from "lucide-react";
 
 export default function MessageCard({ conversation, isActive, onClick }) {
-  const lastMessage = conversation.messages[conversation.messages.length - 1];
+  const messages = conversation.messages || [];
+  const lastMessage = messages[messages.length - 1];
   const participant = conversation.participant;
 
-  // Calculate unread count (messages sent by them that aren't read yet)
-  const unreadCount = conversation.messages.filter(
-    (m) => m.sender === "them" && m.status !== "read"
-  ).length;
+  // The server computes unread from each participant's read cursor; the list
+  // payload only carries the last message, so it cannot be derived client-side.
+  const unreadCount = conversation.unreadCount ?? 0;
 
   return (
     <button

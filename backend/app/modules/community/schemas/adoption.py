@@ -2,7 +2,7 @@ from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
-from app.modules.community.models.enums import AdoptionStatus
+from app.modules.community.models.enums import AdoptionStatus, AdoptionRequestStatus
 
 class AdoptionListingBase(BaseModel):
     title: str = Field(..., max_length=200)
@@ -13,6 +13,8 @@ class AdoptionListingBase(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
     gallery: List[str] = []
 
 class AdoptionListingCreate(AdoptionListingBase):
@@ -26,6 +28,8 @@ class AdoptionListingUpdate(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
+    latitude: Optional[float] = Field(None, ge=-90, le=90)
+    longitude: Optional[float] = Field(None, ge=-180, le=180)
     gallery: Optional[List[str]] = None
 
 class AdoptionListingResponse(AdoptionListingBase):
@@ -33,6 +37,24 @@ class AdoptionListingResponse(AdoptionListingBase):
     owner_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    # Present only on proximity searches.
+    distance_km: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdoptionApplyRequest(BaseModel):
+    message: Optional[str] = None
+
+
+class AdoptionRequestResponse(BaseModel):
+    id: str
+    listing_id: str
+    applicant_id: str
+    message: Optional[str] = None
+    status: AdoptionRequestStatus
+    created_at: datetime
+    listing_title: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

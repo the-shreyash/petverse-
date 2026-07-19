@@ -7,6 +7,7 @@ from app.modules.community.models.enums import PostVisibility
 class PostBase(BaseModel):
     content: str
     media_urls: List[str] = []
+    hashtags: List[str] = []
     visibility: PostVisibility = PostVisibility.PUBLIC
     location: Optional[str] = None
     pet_id: Optional[str] = None
@@ -17,6 +18,7 @@ class PostCreate(PostBase):
 class PostUpdate(BaseModel):
     content: Optional[str] = None
     media_urls: Optional[List[str]] = None
+    hashtags: Optional[List[str]] = None
     visibility: Optional[PostVisibility] = None
     location: Optional[str] = None
 
