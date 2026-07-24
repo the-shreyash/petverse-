@@ -6,7 +6,7 @@ Implementation of the Google Gemini provider.
 
 import json
 from typing import List, Dict, Any, Tuple, Optional
-import google.generativeai as genai
+import google.generativeai as genai  # type: ignore
 
 from app.modules.ai.providers.base import AIProvider, AIProviderResponse
 from app.core.config import get_settings
@@ -19,7 +19,7 @@ class GeminiProvider(AIProvider):
         if self.api_key:
             genai.configure(api_key=self.api_key)
         self.is_configured = bool(self.api_key)
-        self.default_model = "gemini-1.5-pro"
+        self.default_model = "gemini-2.0-flash-lite"
         
     def _ensure_configured(self):
         if not self.is_configured:

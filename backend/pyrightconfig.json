@@ -1,0 +1,13 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Darwin",
+  "include": [
+    "."
+  ],
+  "extraPaths": [
+    "./venv/lib/python3.9/site-packages"
+  ],
+  "typeCheckingMode": "off"
+}

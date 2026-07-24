@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments — NEVER commit (273MB+)
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+
+# Environment variables — NEVER commit
+.env
+.env.local
+.env.production
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Uploads (user-generated content)
+uploads/*
+!uploads/.gitkeep
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
