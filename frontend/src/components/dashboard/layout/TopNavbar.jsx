@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  Bell,
   ChevronDown,
   Menu,
-  Moon,
   Search,
   CheckCircle,
-  Eye
+  Eye,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/notifications/shared/NotificationBell";
@@ -33,9 +33,12 @@ const TopNavbar = ({
   pageDescription = "Welcome back! Here's what's happening today.",
 }) => {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const displayName =
     user ? (`${user.first_name || ""} ${user.last_name || ""}`.trim() || user.username || "User") : "…";
@@ -44,7 +47,7 @@ const TopNavbar = ({
     resolveAvatar(user?.profile_image) ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.first_name || "User")}&background=10b981&color=fff`;
 
-  // Close dropdown on click outside
+  // Close notification dropdown on click outside
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -54,6 +57,23 @@ const TopNavbar = ({
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+
+  // Close user menu on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    try { await logout?.(); } catch (_) {}
+    navigate("/login");
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
@@ -118,21 +138,6 @@ const TopNavbar = ({
         {/* Right Side */}
         <div className="flex items-center gap-3">
 
-          {/* Theme Toggle */}
-          <button
-            className="
-              rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              p-3
-              transition
-              hover:border-emerald-300
-              hover:bg-emerald-50
-            "
-          >
-            <Moon size={18} />
-          </button>
 
           {/* Notifications Bell and Quick Dropdown */}
           <div className="relative" ref={dropdownRef}>
@@ -242,42 +247,75 @@ const TopNavbar = ({
           </div>
 
           {/* User */}
-          <button
-            className="
-              flex
-              items-center
-              gap-3
-              rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              px-3
-              py-2
-              transition
-              hover:border-emerald-300
-            "
-          >
-            <img
-              src={avatarSrc}
-              alt="Profile"
-              className="h-11 w-11 rounded-xl object-cover"
-            />
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen((v) => !v)}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-2xl
+                border
+                border-slate-200
+                bg-white
+                px-3
+                py-2
+                transition
+                hover:border-emerald-300
+              "
+            >
+              <img
+                src={avatarSrc}
+                alt="Profile"
+                className="h-11 w-11 rounded-xl object-cover"
+              />
 
-            <div className="hidden text-left lg:block">
-              <p className="font-semibold text-slate-900">
-                {displayName}
-              </p>
+              <div className="hidden text-left lg:block">
+                <p className="font-semibold text-slate-900">
+                  {displayName}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {roleLabel}
+                </p>
+              </div>
 
-              <p className="text-sm text-slate-500">
-                {roleLabel}
-              </p>
-            </div>
+              <ChevronDown
+                size={18}
+                className={`hidden text-slate-400 lg:block transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
 
-            <ChevronDown
-              size={18}
-              className="hidden text-slate-400 lg:block"
-            />
-          </button>
+            {/* User Dropdown */}
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-3 w-52 rounded-2xl border border-slate-100 bg-white shadow-2xl z-50 overflow-hidden py-1">
+                {/* User info */}
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="font-bold text-slate-900 text-sm truncate">{displayName}</p>
+                  <p className="text-xs text-slate-500 truncate">{user?.email || roleLabel}</p>
+                </div>
+
+
+                <Link
+                  to="/settings"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition"
+                >
+                  <UserIcon size={15} className="text-slate-400" />
+                  My Profile
+                </Link>
+
+                <div className="border-t border-slate-100 mt-1" />
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
