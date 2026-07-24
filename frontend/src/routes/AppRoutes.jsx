@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "./ProtectedRoute";
 import LandingPage from "../pages/LandingPage";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -66,8 +67,16 @@ const AppRoutes = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify" element={<VerifyOTP />} />
       <Route path="/auth/oauth-callback" element={<OAuthCallback />} />
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Protected area — requires an authenticated session.              */}
+      {/* Unauthenticated users are redirected to /login and returned to   */}
+      {/* their intended destination after signing in (see ProtectedRoute).*/}
+      {/* ---------------------------------------------------------------- */}
+      <Route element={<ProtectedRoute />}>
       <Route path="/dashboard" element={<DashboardHome />} />
-      
+      <Route path="/profile" element={<SettingsView />} />
+
       {/* Pet Routes */}
       <Route path="/pets" element={<MyPets />} />
       <Route path="/pets/add" element={<AddPet />} />
@@ -122,6 +131,13 @@ const AppRoutes = () => {
       {/* Support sidebar appointment path typo */}
       <Route path="/appoinments" element={<VetAppointmentsView />} />
       <Route path="/appointments" element={<VetAppointmentsView />} />
+
+      {/* Landing page feature-card "Get Started" aliases */}
+      <Route path="/ai-assistant" element={<AssistantView />} />
+      <Route path="/breed-detection" element={<BreedExpertView />} />
+      <Route path="/vet-services" element={<VetAppointmentsView />} />
+      <Route path="/forgotten-pets" element={<LostFoundPage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

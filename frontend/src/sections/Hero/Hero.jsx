@@ -7,7 +7,7 @@ import HeroScroll from "./HeroScroll";
 
 const Hero = () => {
   return (
-    <section className="relative overflow-hidden bg-slate-50 pt-32">
+    <section id="hero" className="relative overflow-hidden bg-slate-50 pt-32">
       <Background />
 
       <Container>

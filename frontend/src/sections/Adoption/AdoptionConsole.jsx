@@ -35,11 +35,10 @@ const AdoptionConsole = () => {
             <button
               key={type}
               onClick={() => setFilter(type)}
-              className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border ${
-                filter === type
+              className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all border ${filter === type
                   ? "bg-slate-800 text-white border-slate-800 shadow-sm"
                   : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-              }`}
+                }`}
             >
               {type === "all" ? "View All" : `${type}s`}
             </button>
@@ -74,9 +73,8 @@ const AdoptionConsole = () => {
                       </div>
                       <button
                         onClick={() => toggleAdopt(pet.id)}
-                        className={`p-2 rounded-xl transition ${
-                          isFavorite ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50"
-                        }`}
+                        className={`p-2 rounded-xl transition ${isFavorite ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50"
+                          }`}
                       >
                         <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
                       </button>

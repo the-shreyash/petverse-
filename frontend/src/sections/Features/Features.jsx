@@ -9,7 +9,7 @@ import {
 
 const Features = () => {
   return (
-    <section className="py-32 bg-slate-50">
+    <section id="features" className="py-32 bg-slate-50">
 
       <Container>
 

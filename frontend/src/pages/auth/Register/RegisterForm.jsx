@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, User, AtSign } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -12,7 +12,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register } = useAuth();
+
+  // Return the user to the page they originally requested (if any) once
+  // their account is created; otherwise land them on the dashboard.
+  const redirectTo = location.state?.from?.pathname || "/dashboard";
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
@@ -52,7 +57,7 @@ const RegisterForm = () => {
         email,
         password,
       });
-      navigate("/dashboard");
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       const detail = err?.response?.data?.detail
         || err?.response?.data?.message

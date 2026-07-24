@@ -6,15 +6,15 @@ import Button from "../../components/ui/Button";
 import dogImage from "../../assets/illustrations/hero-dog.png";
 
 const BREED_RESULTS = [
-  { name: "Siberian Husky", confidence: 92, color: "bg-emerald-500" },
-  { name: "Alaskan Malamute", confidence: 6, color: "bg-teal-500" },
-  { name: "Samoyed", confidence: 2, color: "bg-cyan-500" }
+  { name: "Golden Retriever", confidence: 92, color: "bg-emerald-500" },
+  { name: "Labrador Retriever", confidence: 6, color: "bg-teal-500" },
+  { name: "Flat-Coated Retriever", confidence: 2, color: "bg-cyan-500" }
 ];
 
 const BREED_STATS = [
-  { label: "Energy Level", value: "High (5/5)" },
-  { label: "Trainability", value: "Independent" },
-  { label: "Life Expectancy", value: "12-15 Years" }
+  { label: "Energy Level", value: "High (4/5)" },
+  { label: "Trainability", value: "Eager to Please" },
+  { label: "Life Expectancy", value: "10-12 Years" }
 ];
 
 const BreedScanner = () => {
@@ -61,9 +61,8 @@ const BreedScanner = () => {
             <img
               src={dogImage}
               alt="Scan Subject"
-              className={`h-full w-full object-cover transition-all duration-700 ${
-                scanState === "scanning" ? "brightness-75 blur-[1px]" : ""
-              }`}
+              className={`h-full w-full object-contain p-4 transition-all duration-700 ${scanState === "scanning" ? "brightness-75 blur-[1px]" : ""
+                }`}
             />
 
             {/* Glowing Scanning Line */}
@@ -207,7 +206,7 @@ const BreedScanner = () => {
                 <div className="rounded-xl bg-emerald-50/30 border border-emerald-100/50 p-4 flex gap-3 text-xs leading-5 text-emerald-800">
                   <ShieldAlert className="shrink-0 mt-0.5" size={16} />
                   <p>
-                    <strong>Husky Care Tip:</strong> Huskys are highly energetic escape artists. Ensure secure fencing and provide daily mental challenges like puzzle toys.
+                    <strong>Golden Retriever Care Tip:</strong> Golden Retrievers are active and highly social dogs. They need regular exercise and love to carry objects in their mouths, so provide plenty of safe chew toys!
                   </p>
                 </div>
               </motion.div>

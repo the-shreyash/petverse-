@@ -1,68 +1,22 @@
-import {
-  PawPrint,
-  Brain,
-  Camera,
-  ShoppingCart,
-  Hospital,
-  HeartHandshake,
-} from "lucide-react";
-
-import FeatureItem from "./FeaturesItem";
-
-const features = [
-  {
-    icon: PawPrint,
-    title: "Pet Management",
-    description:
-      "Manage profiles, vaccinations, feeding schedules and complete health records.",
-  },
-  {
-    icon: Brain,
-    title: "AI Assistant",
-    description:
-      "Receive intelligent care guidance powered by AI.",
-  },
-  {
-    icon: Camera,
-    title: "Breed Detection",
-    description:
-      "Upload a photo and instantly identify breeds with AI.",
-    large: true,
-  },
-  {
-    icon: ShoppingCart,
-    title: "Pet Shop",
-    description:
-      "Shop premium food, toys, medicines and accessories.",
-  },
-  {
-    icon: Hospital,
-    title: "Vet Booking",
-    description:
-      "Find nearby clinics and book appointments easily.",
-  },
-  {
-    icon: HeartHandshake,
-    title: "Adoption",
-    description:
-      "Adopt pets or report lost and found animals.",
-    large: true,
-  },
-];
+import { motion } from "framer-motion";
+import { features } from "../../data/features";
+import FeatureFlipCard from "./FeaturesItem";
 
 const FeatureGrid = () => {
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-
-      {features.map((feature) => (
-
-        <FeatureItem
-          key={feature.title}
-          {...feature}
-        />
-
+    <div className="grid items-start gap-8 md:grid-cols-2">
+      {features.map((feature, i) => (
+        <motion.div
+          key={feature.id}
+          className={feature.large ? "md:col-span-2" : ""}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.5, delay: (i % 2) * 0.1 }}
+        >
+          <FeatureFlipCard {...feature} />
+        </motion.div>
       ))}
-
     </div>
   );
 };

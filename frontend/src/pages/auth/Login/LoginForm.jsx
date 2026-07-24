@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail } from "lucide-react";
 import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -12,7 +12,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+
+  // Where to send the user after a successful sign-in: the page they
+  // originally tried to reach (captured by ProtectedRoute), or the dashboard.
+  const redirectTo = location.state?.from?.pathname || "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -26,7 +31,7 @@ const LoginForm = () => {
 
     try {
       await login({ email, password });
-      navigate("/dashboard");
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       const detail = err?.response?.data?.detail
         || err?.response?.data?.message

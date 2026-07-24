@@ -13,6 +13,17 @@
 
 const listeners = new Map(); // channel -> Set<callback>
 let socket = null;
+let currentToken = null;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      disconnectRealtime();
+    } else if (document.visibilityState === 'visible' && currentToken) {
+      connectRealtime(currentToken);
+    }
+  });
+}
 
 export function subscribeToRealtime(channel, callback) {
   if (!listeners.has(channel)) listeners.set(channel, new Set());
@@ -38,6 +49,7 @@ export function emitRealtime(channel, payload) {
  * Kept here so the connection lifecycle lives in one place.
  */
 export function connectRealtime(token) {
+  currentToken = token;
   const url = import.meta.env.VITE_WS_URL;
   if (!url || socket) return socket;
 

@@ -67,11 +67,10 @@ const VetBookingConsole = () => {
                 setSelectedSlot("");
                 setBookingStatus("idle");
               }}
-              className={`flex items-start gap-4 rounded-2xl border p-4 text-left font-semibold transition-all duration-300 ${
-                selectedClinicId === c.id
+              className={`flex items-start gap-4 rounded-2xl border p-4 text-left font-semibold transition-all duration-300 ${selectedClinicId === c.id
                   ? "border-emerald-500 bg-emerald-50/50 text-emerald-800 shadow-md scale-[1.01]"
                   : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 hover:bg-slate-50/50"
-              }`}
+                }`}
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 text-lg shadow-inner shrink-0">
                 <MapPin size={22} />
@@ -117,11 +116,10 @@ const VetBookingConsole = () => {
                         <button
                           key={d}
                           onClick={() => setSelectedDate(d)}
-                          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all border ${
-                            selectedDate === d
+                          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all border ${selectedDate === d
                               ? "bg-slate-800 text-white border-slate-800 shadow-sm"
                               : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
-                          }`}
+                            }`}
                         >
                           <Calendar size={12} /> {d}
                         </button>
@@ -137,11 +135,10 @@ const VetBookingConsole = () => {
                         <button
                           key={s}
                           onClick={() => setSelectedSlot(s)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-all border ${
-                            selectedSlot === s
+                          className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-bold transition-all border ${selectedSlot === s
                               ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
                               : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
-                          }`}
+                            }`}
                         >
                           <Clock size={12} /> {s}
                         </button>

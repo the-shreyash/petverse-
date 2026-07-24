@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import logo from "@/assets/logos/logo.png";
 import {
   LayoutDashboard,
   PawPrint,
@@ -103,8 +104,8 @@ const Sidebar = ({
 
         <div className="flex items-center gap-3">
 
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg">
-            <PawPrint size={22} />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-lg p-1">
+            <img src={logo} alt="PetVerse Logo" className="h-full w-full object-contain" />
           </div>
 
           {!collapsed && (
