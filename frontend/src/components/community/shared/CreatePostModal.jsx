@@ -131,6 +131,10 @@ export default function CreatePostModal({ isOpen, onClose, onSave }) {
         outline-none
         backdrop:bg-slate-900/60
         backdrop:backdrop-blur-sm
+        mx-auto
+        my-auto
+        max-h-[90vh]
+        overflow-y-auto
       "
     >
       <div className="relative flex flex-col gap-6">

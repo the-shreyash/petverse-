@@ -32,3 +32,10 @@ body{
     background-color: #f5f5f5;
     ;
 }
+
+/* Center native <dialog> elements on screen */
+dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+}
