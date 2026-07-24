@@ -19,7 +19,7 @@ class GeminiProvider(AIProvider):
         if self.api_key:
             genai.configure(api_key=self.api_key)
         self.is_configured = bool(self.api_key)
-        self.default_model = "gemini-1.5-pro"
+        self.default_model = "gemini-2.0-flash-lite"
         
     def _ensure_configured(self):
         if not self.is_configured:
